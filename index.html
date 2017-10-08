@@ -1,0 +1,66 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title data-template="config:app-title">Srophe CTS URNs resolver</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta data-template="config:app-meta"/>
+        <link rel="shortcut icon" href="$shared/resources/images/exist_icon_16x16.ico"/>
+        <link rel="stylesheet" type="text/css" href="$shared/resources/css/bootstrap-3.0.3.min.css"/>
+        <script type="text/javascript" src="$shared/resources/scripts/jquery/jquery-1.7.1.min.js"/>
+        <script type="text/javascript" src="$shared/resources/scripts/loadsource.js"/>
+        <script type="text/javascript" src="$shared/resources/scripts/bootstrap-3.0.3.min.js"/>
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $('#zoteroResults').load('get-zotero-data.xql');
+                
+                $('.zotero').click(function(event) {
+                    event.preventDefault();
+                    var $url = $(this).attr("href");
+                    $("#zoteroResults").load($url);
+                });
+            });
+        </script>
+    </head>
+    <body id="body">
+        <nav class="navbar navbar-default" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"/>
+                    <span class="icon-bar"/>
+                    <span class="icon-bar"/>
+                </button>
+                <a class="navbar-brand" href=".">
+                    <img src="srophe-logo.svg" width="65px"/> Powered by Srophe Software</a>
+            </div>
+            <div class="navbar-collapse collapse" id="navbar-collapse-1">
+                <!--
+                <ul class="nav navbar-nav">
+                    <li class="dropdown" id="about">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Home</a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a href="index.html">Home</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                -->
+            </div>
+        </nav>
+        <div id="content" class="container">
+            <h1>Srophe Zotero to TEI bibliography</h1>
+            <div class="container">
+                <p class="alert alert-info">Accesses Zotero API to load Zotero library into eXistdb and keep the eXistdb version up to date with the Zotero library.</p>
+                <h4>Status</h4>
+                <div id="zoteroResults" class="container"/>
+                <a href="get-zotero-data.xql?action=initiate" class="btn btn-info zotero">Initiate</a>
+                <a href="get-zotero-data.xql?action=update" class="btn btn-info zotero">Update</a>
+            </div>
+        </div>
+        <hr/>
+        
+        <footer>
+            <!--<p>Rights...</p>-->
+        </footer>
+    </body>
+</html>
