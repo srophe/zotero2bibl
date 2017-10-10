@@ -1,7 +1,7 @@
 <zotero-config>
     <!-- Used by get-zotero-data.pp.xql-->
-    <groupid>392292</groupid>
+    <groupid></groupid>
     <last-modified-version></last-modified-version>
-    <data-dir>/db/apps/bibl-test/data</data-dir>
-    <base-uri>http://syriaca.org/bibl</base-uri>    
+    <data-dir></data-dir>
+    <base-uri></base-uri>    
 </zotero-config>

@@ -33,59 +33,10 @@ declare variable $data-dir := $zotero-config//data-dir/text();
 declare variable $base-uri := $zotero-config//base-uri/text();
 
 (:~
- : Check for updates since last modified version (stored in $zotero-config)
- : @param $groupid Zotero group id
- : @param $last-modified-version
-:)
-declare function local:get-zotero-group-items(){
-if($last-modified-version != '' or request:get-parameter('action', '') != 'initiate') then 
-    http:send-request(<http:request href="{xs:anyURI(concat($zotero-api,'/groups/',$groupid,'/items?format=tei'))}" method="get">
-                         <http:header name="Connection" value="close"/>
-                         <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
-                       </http:request>)
-else
-    http:send-request(<http:request href="{xs:anyURI(concat($zotero-api,'/groups/',$groupid,'/items?format=tei'))}" method="get">
-                         <http:header name="Connection" value="close"/>
-                       </http:request>)                   
-};
-
-(:~
- : Page through Zotero results
- : @param $groupid
- : @param $last-modified-version
- : @param $total
- : @param $start
- : @param $perpage
-:)
-declare function local:get-next($total as xs:integer, $start as xs:integer, $perpage as xs:integer){
-let $items := 
-    http:send-request(<http:request href="{xs:anyURI(concat($zotero-api,'/groups/',$groupid,'/items?start=',$start,'&amp;format=tei'))}" method="get">
-                         <http:header name="Connection" value="close"/>
-                         <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
-                       </http:request>)
-let $headers := $items[1]
-let $results := $items[2]
-let $next := if(($start + $perpage) lt $total) then $start + $perpage else ()
-return 
-    if($headers/@status = '200') then
-        (
-        for $rec at $p in $results//tei:biblStruct
-        let $rec-num := $start + $p
-        return local:process-items($rec, $rec-num),
-        if($next) then 
-            local:get-next($total, $next, $perpage)
-        else ())
-    else  <message status="{$headers/@status}">{$headers/@message}</message>          
-};
-
-(:~
- : Check for new records (records not in the eXist database)
  : Convert records to Syriaca.org complient TEI records, using zotero2tei.xqm
  : Save records to the database. 
  : @param $record 
  : @param $index-number
-     let $status := local:local-rec-status($record)
-    where $status[@status = 'new']
 :)
 declare function local:process-items($record as node()?, $index-number as xs:integer){
     let $id := local:make-local-uri($record, $index-number)
@@ -101,20 +52,6 @@ declare function local:process-items($record as node()?, $index-number as xs:int
                 <message>Failed to add resource {$id}: {concat($err:code, ": ", $err:description)}</message>
             </response>
         } 
-};
-
-(:
- : Check for existing zotero record in eXistdb.
- : NOTE: Not currently used. Cannonical version assumed to live in Zotero, all data in eXist is replaced.  
- : @param $record 
-:)
-declare function local:local-rec-status($record as node()?){
-    let $z-id := string($record/@corresp)
-    let $match := collection($data-dir)//tei:idno[. = $z-id]
-    return 
-        if(collection($data-dir)//tei:idno[. = $z-id]) then 
-            <response status="exists"><message>Record already in the eXist database.</message></response>
-        else <response status="new"><message>Record does not exist in database.</message></response>
 };
 
 (:~
@@ -133,7 +70,7 @@ declare function local:make-local-uri($record as node()?, $index-number as xs:in
 };
 
 (:~
- : Update stored last modified version in zotero-config.xml
+ : Update stored last modified version (from Zotero API) in zotero-config.xml
 :)
 declare function local:update-version($version as xs:string?) {
     try {
@@ -148,10 +85,66 @@ declare function local:update-version($version as xs:string?) {
 };
 
 (:~
- : Get zotero data. 
+ : Page through Zotero results
+ : @param $groupid
+ : @param $last-modified-version
+ : @param $total
+ : @param $start
+ : @param $perpage
+:)
+declare function local:get-next($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?){
+let $items := local:get-zotero-data($total, $start, $perpage)
+let $headers := $items[1]
+let $results := $items[2]
+let $next := if(($start + $perpage) lt $total) then $start + $perpage else ()
+return 
+    if($headers/@status = '200') then
+        (
+        for $rec at $p in $results//tei:biblStruct
+        let $rec-num := $start + $p
+        return local:process-items($rec, $rec-num),
+        if($next) then 
+            local:get-next($total, $next, $perpage)
+        else ())
+    else if($headers/@name="Backoff") then
+        (<message status="{$headers/@status}">{string($headers/@message)}</message>,
+            let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
+            return local:get-next($total, $next, $perpage)
+        )
+    else if($headers/@name="Retry-After") then   
+        (<message status="{$headers/@status}">{string($headers/@message)}</message>,
+            let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value]))
+            return local:get-next($total, $next, $perpage)
+        )
+    else  <message status="{$headers/@status}">{string($headers/@message)}</message>          
+};
+
+(:~
+ : Get Zotero data
+ : Check for updates since last modified version (stored in $zotero-config)
+ : @param $groupid Zotero group id
+ : @param $last-modified-version
+:)
+declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?){
+let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
+let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=tei',$start)
+return 
+    if(request:get-parameter('action', '') = 'initiate') then 
+        http:send-request(<http:request href="{xs:anyURI($url)}" method="get">
+                         <http:header name="Connection" value="close"/>
+                       </http:request>)
+    else                    
+        http:send-request(<http:request href="{xs:anyURI($url)}" method="get">
+                         <http:header name="Connection" value="close"/>
+                         <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
+                       </http:request>)                       
+};
+
+(:~
+ : Get and process Zotero data. 
 :)
 declare function local:get-zotero(){
-    let $items-info := local:get-zotero-group-items()[1]
+    let $items-info := local:get-zotero-data((), (), ())[1]
     let $total := $items-info/http:header[@name='total-results']/@value
     let $version := $items-info/http:header[@name='last-modified-version']/@value
     let $perpage := 24
@@ -161,7 +154,7 @@ declare function local:get-zotero(){
         if($items-info/@status = '200') then
           (local:get-next($total, $start, $perpage),
            local:update-version($version))
-        else <message status="{$items-info/@status}">{$items-info/@message}</message>    
+        else <message status="{$items-info/@status}">{string($items-info/@message)}</message>    
 };
 
 (: Helper function to recursively create a collection hierarchy. :)

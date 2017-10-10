@@ -10,13 +10,28 @@
         <script type="text/javascript" src="$shared/resources/scripts/bootstrap-3.0.3.min.js"/>
         <script type="text/javascript">
             $(document).ready(function () {
+                $('#loadingmessage').hide();
                 $('#zoteroResults').load('get-zotero-data.xql');
-                
+                      
                 $('.zotero').click(function(event) {
                     event.preventDefault();
-                    var $url = $(this).attr("href");
-                    $("#zoteroResults").load($url);
+                    var url = $(this).attr("href");
+                    $('#loadingmessage').show();
+                    
+                    $.ajax({
+                        type:"get",
+                        dataType: "html",
+                        url:url,
+                        success:function(data){
+                               $('#loadingmessage').hide();
+                               $("#zoteroResults").html(data);
+                          }
+                      });
+                      
+                    //$("#zoteroResults").load(url);
+                    
                 });
+                
             });
         </script>
     </head>
@@ -53,6 +68,9 @@
                 <p class="alert alert-info">Accesses Zotero API to load Zotero library into eXistdb and keep the eXistdb version up to date with the Zotero library.</p>
                 <h4>Status</h4>
                 <div id="zoteroResults" class="container"/>
+                <div class="progress" id="loadingmessage">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" style="width:70%">Loading...</div>
+                </div>
                 <a href="get-zotero-data.xql?action=initiate" class="btn btn-info zotero">Initiate</a>
                 <a href="get-zotero-data.xql?action=update" class="btn btn-info zotero">Update</a>
             </div>
