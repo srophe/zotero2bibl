@@ -8,10 +8,9 @@
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"/>            
         <!-- Optional theme -->    
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous"/>                
-        
-        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+        <script src="http://code.jquery.com/jquery-1.9.1.min.js"/>
         <!-- Latest compiled and minified JavaScript -->        
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"/>
         <script type="text/javascript">
             $(document).ready(function () {
                 $('#loadingmessage').hide();
@@ -48,7 +47,8 @@
                     <span class="icon-bar"/>
                     <span class="icon-bar"/>
                 </button>
-                <a class="navbar-brand" href="." style="height:75px;margin-top:0;padding-top:0;"><img src="srophe-logo.svg" width="65px" style="display:inline;"/> Powered by Srophe Software</a>
+                <a class="navbar-brand" href="." style="height:75px;margin-top:0;padding-top:0;">
+                    <img src="srophe-logo.svg" width="65px" style="display:inline;"/> Powered by Srophe Software</a>
             </div>
             <div class="navbar-collapse collapse" id="navbar-collapse-1">
                 <!--
@@ -77,7 +77,9 @@
                                 <li>Add your Zotero group id</li>
                                 <li>
                                     Add the path to the data directory where you want to store Zotero bibliographic records in eXist.<br/>
-                                    <span class="small"><em>*This application will overwrite any files in eXistdb that have been updated in Zotero.</em></span>
+                                    <span class="small">
+                                        <em>*This application will overwrite any files in eXistdb that have been updated in Zotero.</em>
+                                    </span>
                                 </li>
                                 <li>Add the URI pattern to base an incremental URI on. example: http://syriaca.org/bibl</li>
                             </ul>
