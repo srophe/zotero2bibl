@@ -4,10 +4,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <meta data-template="config:app-meta"/>
         <link rel="shortcut icon" href="$shared/resources/images/exist_icon_16x16.ico"/>
-        <link rel="stylesheet" type="text/css" href="$shared/resources/css/bootstrap-3.0.3.min.css"/>
-        <script type="text/javascript" src="$shared/resources/scripts/jquery/jquery-1.7.1.min.js"/>
-        <script type="text/javascript" src="$shared/resources/scripts/loadsource.js"/>
-        <script type="text/javascript" src="$shared/resources/scripts/bootstrap-3.0.3.min.js"/>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"/>            
+        <!-- Optional theme -->    
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous"/>                
+        
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+        <!-- Latest compiled and minified JavaScript -->        
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script type="text/javascript">
             $(document).ready(function () {
                 $('#loadingmessage').hide();
@@ -44,8 +48,7 @@
                     <span class="icon-bar"/>
                     <span class="icon-bar"/>
                 </button>
-                <a class="navbar-brand" href=".">
-                    <img src="srophe-logo.svg" width="65px"/> Powered by Srophe Software</a>
+                <a class="navbar-brand" href="." style="height:75px;margin-top:0;padding-top:0;"><img src="srophe-logo.svg" width="65px" style="display:inline;"/> Powered by Srophe Software</a>
             </div>
             <div class="navbar-collapse collapse" id="navbar-collapse-1">
                 <!--
@@ -65,7 +68,22 @@
         <div id="content" class="container">
             <h1>Srophe Zotero to TEI bibliography</h1>
             <div class="container">
-                <p class="alert alert-info">Accesses Zotero API to load Zotero library into eXistdb and keep the eXistdb version up to date with the Zotero library.</p>
+                <p class="alert alert-info">Accesses Zotero API to load Zotero library into eXistdb and keep the eXistdb version up to date with the Zotero library. Canonical data lives in Zotero. Data stored in eXist uses the zotero2tei.xqm to transform Zotero records into Syriaca.org compliant TEI records. To change the TEI output edit zotero2tei.xqm.</p>
+                <div class="alert alert-warning">
+                    <b>Instructions: </b>
+                    <ul>
+                        <li>Edit zotero-config.xml
+                            <ul>
+                                <li>Add your Zotero group id</li>
+                                <li>
+                                    Add the path to the data directory where you want to store Zotero bibliographic records in eXist.<br/>
+                                    <span class="small"><em>*This application will overwrite any files in eXistdb that have been updated in Zotero.</em></span>
+                                </li>
+                                <li>Add the URI pattern to base an incremental URI on. example: http://syriaca.org/bibl</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
                 <h4>Status</h4>
                 <div id="zoteroResults" class="container"/>
                 <div class="progress" id="loadingmessage">
