@@ -3,15 +3,11 @@ xquery version "3.1";
  : XQuery Zotero integration
  : Queries Zotero API : https://api.zotero.org
  : Checks for updates since last modified version using Zotero Last-Modified-Version header
- : Checks for existing records in eXistdb at specifed data directory
  : Converts Zotero records to Syriaca.org TEI using zotero2tei.xqm
  : Adds new records to directory.
  :
  : To be done: 
  :      Submit to Perseids
- :      Better (any) rate limiting handling. Respond appropriatly to backoff responses: 
-            Backoff: <seconds>  in header
-            Retry-After: <seconds> in header
 :)
 
 import module namespace http="http://expath.org/ns/http-client";
@@ -31,6 +27,8 @@ declare variable $last-modified-version := $zotero-config//last-modified-version
 declare variable $data-dir := $zotero-config//data-dir/text();
 (: Local URI pattern for bibl records :)
 declare variable $base-uri := $zotero-config//base-uri/text();
+(: Format defaults to tei :)
+declare variable $format := if($zotero-config//format/text() != '') then $zotero-config//format/text() else 'tei';
 
 (:~
  : Convert records to Syriaca.org complient TEI records, using zotero2tei.xqm
@@ -38,10 +36,10 @@ declare variable $base-uri := $zotero-config//base-uri/text();
  : @param $record 
  : @param $index-number
 :)
-declare function local:process-items($record as node()?, $index-number as xs:integer){
-    let $id := local:make-local-uri($record, $index-number)
+declare function local:process-items($record as item()?, $index-number as xs:integer, $format as xs:string?){
+    let $id := local:make-local-uri($index-number)
     let $file-name := concat($index-number,'.xml')
-    let $new-record := zotero2tei:build-new-record($record, $id)
+    let $new-record := zotero2tei:build-new-record($record, $id, $format)
     return 
         try {
             <response status="200">
@@ -59,7 +57,7 @@ declare function local:process-items($record as node()?, $index-number as xs:int
  : @param $path to existing bibliographic data
  : @param $base-uri base uri defined in repo.xml, establishing pattern for bibl ids. example: http://syriaca.org/bibl 
 :)
-declare function local:make-local-uri($record as node()?, $index-number as xs:integer) {
+declare function local:make-local-uri($index-number as xs:integer) {
     let $all-bibl-ids := 
             for $uri in collection($data-dir)/tei:TEI/tei:text/tei:body/tei:biblStruct/descendant::tei:idno[starts-with(.,$base-uri)]
             return number(replace(replace($uri,$base-uri,''),'/tei',''))
@@ -92,29 +90,34 @@ declare function local:update-version($version as xs:string?) {
  : @param $start
  : @param $perpage
 :)
-declare function local:get-next($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?){
-let $items := local:get-zotero-data($total, $start, $perpage)
+declare function local:get-next($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
+let $items := local:get-zotero-data($total, $start, $perpage,$format)
 let $headers := $items[1]
-let $results := $items[2]
+let $results := if($format = 'json') then parse-json(util:binary-to-string($items[2])) else $items[2]
 let $next := if(($start + $perpage) lt $total) then $start + $perpage else ()
 return 
     if($headers/@status = '200') then
         (
-        for $rec at $p in $results//tei:biblStruct
-        let $rec-num := $start + $p
-        return local:process-items($rec, $rec-num),
+        if($format = 'json') then
+            for $rec at $p in $results?*
+            let $rec-num := $start + $p
+            return local:process-items($rec, $rec-num, $format)
+        else 
+            for $rec at $p in $results//tei:biblStruct
+            let $rec-num := $start + $p
+            return local:process-items($rec, $rec-num, $format),
         if($next) then 
-            local:get-next($total, $next, $perpage)
+            local:get-next($total, $next, $perpage,$format)
         else ())
     else if($headers/@name="Backoff") then
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
-            return local:get-next($total, $next, $perpage)
+            return local:get-next($total, $next, $perpage,$format)
         )
     else if($headers/@name="Retry-After") then   
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value]))
-            return local:get-next($total, $next, $perpage)
+            return local:get-next($total, $next, $perpage,$format)
         )
     else  <message status="{$headers/@status}">{string($headers/@message)}</message>          
 };
@@ -125,9 +128,9 @@ return
  : @param $groupid Zotero group id
  : @param $last-modified-version
 :)
-declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?){
+declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
 let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
-let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=tei',$start)
+let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start)
 return 
     if(request:get-parameter('action', '') = 'initiate') then 
         http:send-request(<http:request href="{xs:anyURI($url)}" method="get">
@@ -144,17 +147,19 @@ return
  : Get and process Zotero data. 
 :)
 declare function local:get-zotero(){
-    let $items-info := local:get-zotero-data((), (), ())[1]
+    let $items := local:get-zotero-data((), (), (),$format)
+    let $items-info := local:get-zotero-data((), (), (),$format)[1]
     let $total := $items-info/http:header[@name='total-results']/@value
     let $version := $items-info/http:header[@name='last-modified-version']/@value
     let $perpage := 24
     let $pages := xs:integer($total div $perpage)
     let $start := 0
+    let $json := parse-json(util:binary-to-string($items[2]))
     return 
         if($items-info/@status = '200') then
-          (local:get-next($total, $start, $perpage),
+          (local:get-next($total, $start, $perpage,$format),
            local:update-version($version))
-        else <message status="{$items-info/@status}">{string($items-info/@message)}</message>    
+        else <message status="{$items-info/@status}">{string($items-info/@message)}</message>   
 };
 
 (: Helper function to recursively create a collection hierarchy. :)
@@ -173,6 +178,11 @@ declare function local:mkcol($collection, $path) {
     local:mkcol-recursive($collection, tokenize($path, "/"))
 };
 
+(:~
+ : Check action parameter, if empty, return contents of config.xml
+ : If $action is not empty, check for specified collection, create if it does not exist. 
+ : Run Zotero request. 
+:)
 if(request:get-parameter('action', '') != '') then
     if(xmldb:collection-available($data-dir)) then
         local:get-zotero()
