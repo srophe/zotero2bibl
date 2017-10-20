@@ -133,11 +133,11 @@ let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
 let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start)
 return 
     if(request:get-parameter('action', '') = 'initiate') then 
-        http:send-request(<http:request href="{xs:anyURI($url)}" method="get">
+        http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
                          <http:header name="Connection" value="close"/>
                        </http:request>)
     else                    
-        http:send-request(<http:request href="{xs:anyURI($url)}" method="get">
+        http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
                          <http:header name="Connection" value="close"/>
                          <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
                        </http:request>)                       
