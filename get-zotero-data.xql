@@ -93,7 +93,10 @@ declare function local:update-version($version as xs:string?) {
 declare function local:get-next($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
 let $items := local:get-zotero-data($total, $start, $perpage,$format)
 let $headers := $items[1]
-let $results := if($format = 'json') then parse-json(util:binary-to-string($items[2])) else $items[2]
+let $results := 
+    if($format = 'json') then 
+        parse-json(util:binary-to-string($items[2])) 
+    else $items[2]
 let $next := if(($start + $perpage) lt $total) then $start + $perpage else ()
 return 
     if($headers/@status = '200') then
@@ -154,7 +157,6 @@ declare function local:get-zotero(){
     let $perpage := 24
     let $pages := xs:integer($total div $perpage)
     let $start := 0
-    let $json := parse-json(util:binary-to-string($items[2]))
     return 
         if($items-info/@status = '200') then
           (local:get-next($total, $start, $perpage,$format),
