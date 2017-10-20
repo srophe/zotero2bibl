@@ -108,10 +108,12 @@ return
         else 
             for $rec at $p in $results//tei:biblStruct
             let $rec-num := $start + $p
-            return local:process-items($rec, $rec-num, $format),
+            return local:process-items($rec, $rec-num, $format)
+        (:, Commented out next function for debugging
         if($next) then 
             local:get-next($total, $next, $perpage,$format)
-        else ())
+        else ():)
+        )
     else if($headers/@name="Backoff") then
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
@@ -133,7 +135,8 @@ return
 :)
 declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
 let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
-let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start)
+let $limit := if(not(empty($perpage))) then concat('&amp;limit=',$perpage) else ()
+let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start, $limit)
 return 
     if(request:get-parameter('action', '') = 'initiate') then 
         http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
@@ -154,7 +157,7 @@ declare function local:get-zotero(){
     let $items-info := local:get-zotero-data((), (), (),$format)[1]
     let $total := $items-info/http:header[@name='total-results']/@value
     let $version := $items-info/http:header[@name='last-modified-version']/@value
-    let $perpage := 24
+    let $perpage := 5
     let $pages := xs:integer($total div $perpage)
     let $start := 0
     return 
