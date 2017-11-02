@@ -199,8 +199,68 @@ let $titles-all := for $t in $rec?data?title
 let $local-uri := <idno type='URI'>{$local-id}</idno>        
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
 let $zotero-idno := <idno type='zotero'>{$rec?links?alternate?href}</idno>  
-(:    Grabs URI in tags prefixed by 'Subject: '. :)
+(:  Equals the biblStruct/@corresp URI to idno with @type='URI' :)
+let $zotero-idno-uri := <idno type='URI'>{$rec?links?self?href}</idno>
+(:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
+(:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
+let $worldcat-uri := for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                return <idno type='URI'>{"http://www.worldcat.org/oclc/" || $num}</idno>
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri)
+(: organizing creators by type and name :)
+let $creator := for $creators in $rec?data?creators?*
+                return element {$creators?creatorType} {element forename {$creators?firstName}, element surename{$creators?lastName}}
+(: creating imprint, any additional data required here? :)
+let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
+                    if ($rec?data?place) then (<pubPlace>{$rec?data?place}</pubPlace>) else (),
+                    if ($rec?data?publisher) then (<publisher>{$rec?data?publisher}</publisher>) else (),
+                    if ($rec?data?date) then (<date>{$rec?data?date}</date>) else ()
+                }</imprint>)
+(: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
+let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
+                        for $tag in $rec?data?tags?*?tag
+                            return if (matches($tag,'^\s*Subject:\s*') or matches($tag,'^\s*MS:\s*')) then (
+                                element relation {
+                                    attribute active {$local-uri},
+                                    if (matches($tag,'^\s*Subject:\s*')) then (
+                                        attribute ref {"dc:subject"},
+                                        element desc {substring-after($tag,"Subject: ")}
+                                    ) else (),
+                                    if (matches($tag,'^\s*MS:\s*')) then (
+                                        attribute ref{"dcterms:reference"},
+                                        element desc {
+                                            element bibl {substring-after($tag,"MS: ")}
+                                        }
+                                    ) else ()
+                                }
+                            ) else ()
+                    }</listRelation>)
+(: Not sure if that is sufficient for an analytic check? following the TEI-guideline and the other script @github... :)
+let $tei-analytic := if ($rec?data?itemType   = "journalArticle" 
+                        or $rec?data?itemType = "bookSection"
+                        or $rec?data?itemType = "magazineArticle"
+                        or $rec?data?itemType = "newspaperArticle"
+                        or $rec?data?itemType = "conferencePaper") then
+        <analytic>{
+            $creator,
+            $titles-all,
+            $all-idnos
+        }</analytic>
+        else ()
+let $tei-monogr := if ($rec?data?itemType = "book") then
+        <monogr>{
+            $creator,
+            (: I wasn't sure about the attributation with m/a/j, I still have to add that :)
+            $titles-all,
+            if ($tei-analytic) then () else ($all-idnos),
+            if ($imprint) then ($imprint) else ()
+        }</monogr> else ()
+(: I haven't found an example file with series information to find the JSON equivalence to the tei structure, so have to continue on that :)
+let $tei-series := if ($rec?data?series) then
+    <series>{
+        $rec?data?seriesTitle    
+    }</series>
+    else ()
 return     
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
@@ -240,8 +300,11 @@ return
         <text>
             <body>
                 <biblStruct>
-                  {'To be done'}
+                  {$tei-analytic}
+                  {$tei-monogr}
+                  {$tei-series}
                 </biblStruct>
+                {$list-relations}
             </body>
         </text>
     </TEI>
