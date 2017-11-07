@@ -250,7 +250,7 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                         element desc {substring-after($tag,"Subject: ")}
                                     ) else (),
                                     if (matches($tag,'^\s*MS:\s*')) then (
-                                        attribute ref{"dcterms:reference"},
+                                        attribute ref{"dcterms:references"},
                                         element desc {
                                             element bibl {substring-after($tag,"MS: ")}
                                         }
