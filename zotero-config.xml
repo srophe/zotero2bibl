@@ -1,28 +1,29 @@
 <zotero-config>
     <!-- Used by get-zotero-data.pp.xql-->
-    <groupid>538215</groupid>
-    <last-modified-version>1709</last-modified-version>
+    <groupid></groupid>
+    <last-modified-version></last-modified-version>
     <!-- format json or tei -->
-    <format>json</format>
+    <format>tei</format>
     <data-dir>/db/apps/bibl-test-app</data-dir>
-    <base-uri>http://biblia-arabica.com/bibl</base-uri>
+    <base-uri>http://syriaca.org/bibl</base-uri>
     <!-- Allowed values: auto-generated, zotero -->
     <id-pattern>zotero</id-pattern>
     <!-- Values used to build TEI records -->
-    <sponsor xmlns="http://www.tei-c.org/ns/1.0">Biblia Arabica</sponsor>
-    <funder xmlns="http://www.tei-c.org/ns/1.0">Deutsche Forschungsgemeinschaft</funder>
-    <principal xmlns="http://www.tei-c.org/ns/1.0">Ronny Vollandt</principal>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://biblia-arabica.com/documentation/editors.xml#rvollandt">Ronny Vollandt</editor>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
-    <respStmt xmlns="http://www.tei-c.org/ns/1.0">
-        <resp>Bibliography curation by</resp>
-        <name>Biblia Arabica research team</name>
+    <sponsor xmlns="http://www.tei-c.org/ns/1.0">Syriaca.org: The Syriac Reference Portal</sponsor>
+    <funder xmlns="http://www.tei-c.org/ns/1.0">The National Endowment for the Humanities</funder>
+    <principal xmlns="http://www.tei-c.org/ns/1.0">David A. Michelson</principal>
+    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#tcarlson">Thomas A. Carlson</editor>
+    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
+    <editor role="creator" ref="http://syriaca.org/documentation/editors.xml#tcarlson">Thomas A. Carlson</editor>
+    <respStmt>
+        <resp>XML coded by</resp>
+        <name ref="http://syriaca.org/documentation/editors.xml#tcarlson">Thomas A. Carlson</name>
     </respStmt>
-    <respStmt xmlns="http://www.tei-c.org/ns/1.0">
-        <resp>TEI encoding by</resp>
-        <name ref="http://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</name>
+    <respStmt>
+        <resp>Page numbers entered by</resp>
+        <name ref="http://syriaca.org/documentation/editors.xml#avawter">Alex Vawter</name>
     </respStmt>
-    <availability xmlns="http://www.tei-c.org/ns/1.0">
+    <availability>
         <licence target="http://creativecommons.org/licenses/by/3.0/">
             <p>Distributed under a Creative Commons Attribution 3.0 Unported License.</p>
         </licence>
