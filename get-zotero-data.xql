@@ -35,21 +35,30 @@ declare variable $format := if($zotero-config//format/text() != '') then $zotero
  : Save records to the database. 
  : @param $record 
  : @param $index-number
+ : @param $format
 :)
 declare function local:process-items($record as item()?, $index-number as xs:integer, $format as xs:string?){
+    let $idNumber :=
+                    if($zotero-config//id-pattern/text() = 'zotero' and $format = 'json') then
+                        tokenize($record?links?alternate?href,'/')[last()]
+                    else if($zotero-config//id-pattern/text() = 'zotero' and $format ='tei') then
+                        tokenize($record/@corresp,'/')[last()]
+                    else $index-number                   
     let $id := local:make-local-uri($index-number)
-    let $file-name := concat($index-number,'.xml')
+    let $file-name := concat($idNumber,'.xml')
     let $new-record := zotero2tei:build-new-record($record, $id, $format)
-    return 
-        try {
-            <response status="200">
-                    <message>{xmldb:store($data-dir, xmldb:encode-uri($file-name), $new-record)}</message>
+    return
+        if($idNumber != '') then 
+            try {
+                <response status="200">
+                        <message>{xmldb:store($data-dir, xmldb:encode-uri($file-name), $new-record)}</message>
+                    </response>
+            } catch *{
+                <response status="fail">
+                    <message>Failed to add resource {$id}: {concat($err:code, ": ", $err:description)}</message>
                 </response>
-        } catch *{
-            <response status="fail">
-                <message>Failed to add resource {$id}: {concat($err:code, ": ", $err:description)}</message>
-            </response>
-        } 
+            } 
+        else ()
 };
 
 (:~
@@ -111,7 +120,8 @@ return
             return local:process-items($rec, $rec-num, $format),
         if($next) then 
             local:get-next($total, $next, $perpage,$format)
-        else ())
+        else ()
+        )
     else if($headers/@name="Backoff") then
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
@@ -133,6 +143,7 @@ return
 :)
 declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
 let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
+(:let $limit := if(not(empty($perpage))) then concat('&amp;limit=',$perpage) else ():)
 let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start)
 return 
     if(request:get-parameter('action', '') = 'initiate') then 
