@@ -33,6 +33,9 @@ declare default element namespace "http://www.tei-c.org/ns/1.0";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
 declare namespace functx = "http://www.functx.com";
 
+(: Access zotero-api configuration file :) 
+declare variable $zotero2tei:zotero-config := doc('zotero-config.xml');
+
 (:~ 
  : Simple typeswitch to transform specific Zotero elements into to Syriaca.org TEI elements
  : @param $node 
@@ -140,21 +143,15 @@ return
         <teiHeader>
             <fileDesc>
                 <titleStmt>
-                    {$titles-all}
-                    <sponsor>Syriaca.org: The Syriac Reference Portal</sponsor>
-                    <funder>The National Endowment for the Humanities</funder>
-                    <funder>The International Balzan Prize Foundation</funder>
-                    <principal>David A. Michelson</principal>
-                    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
-                    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
-                    <editor role="creator" ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
-                    <respStmt>
-                        <resp>Bibliography curation and TEI record generation by</resp>
-                        <name ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</name>
-                    </respStmt>
+                    {($titles-all,
+                    $zotero2tei:zotero-config//*:sponsor,
+                    $zotero2tei:zotero-config//*:funder,
+                    $zotero2tei:zotero-config//*:principal,
+                    $zotero2tei:zotero-config//*:editor,
+                    $zotero2tei:zotero-config//*:respStmt)}
                 </titleStmt>
                 <publicationStmt>
-                    <authority>Syriaca.org: The Syriac Reference Portal</authority>
+                    <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
                     <availability>
                         <licence target="http://creativecommons.org/licenses/by/3.0/">
@@ -192,41 +189,121 @@ return
  : Sample JSON from Zotero at json-example.json
 :)
 declare function zotero2tei:build-new-record-json($rec, $local-id) {
-(: Titles from zotero record:)
-let $titles-all := for $t in $rec?data?title
-                   return <title>{$t}</title>
+let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]                         
+let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-uri/text(),'/',$ids) else $local-id
+let $itemType := $rec?data?itemType
+let $recordType := 	
+    if($itemType = 'book' and $rec?data?series != '') then 'monograph'
+    else if($itemType = ('journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
+    else 'monograph' 
+(: Main titles from zotero record:)
+let $analytic-title := for $t in $rec?data?title
+                       return 
+                            element { xs:QName("title") } {
+                             if($recordType = 'analytic') then attribute level { "a" }
+                             else if($recordType = 'monograph') then attribute level { "m" } 
+                             else (), $t}
+let $series-titles :=  (for $series in $rec?data?series[. != ''] 
+                        return 
+                            element { xs:QName("title") } {
+                            if($recordType = 'monograph') then attribute level { "s" }
+                            else (), $series},
+                        for $series in $rec?data?seriesTitle[. != ''] 
+                        return 
+                            element { xs:QName("title") } {
+                            if($recordType = 'monograph') then attribute level { "s" }
+                            else (), $series})
+let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
+                        return <title level="j">{$journal}</title>                        
+let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
-let $local-uri := <idno type='URI'>{$local-id}</idno>        
+let $local-uri := <idno type="URI">{$local-id}</idno>        
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
-let $zotero-idno := <idno type='zotero'>{$rec?links?alternate?href}</idno>  
-(:    Grabs URI in tags prefixed by 'Subject: '. :)
+let $zotero-idno := <idno type="zotero">{$rec?links?alternate?href}</idno>  
+(:  Equals the biblStruct/@corresp URI to idno with @type='URI' :)
+let $zotero-idno-uri := <idno type="URI">{$rec?links?self?href}</idno>
+(:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
+(:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
+let $worldcat-uri := for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>
+let $refs := for $ref in $rec?data?url[. != '']
+             return <ref target="{$ref}"/>                
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
+
+(: organizing creators by type and name :)
+let $creator := for $creators in $rec?data?creators?*
+                return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
+(: creating imprint, any additional data required here? :)
+let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
+                    if ($rec?data?place) then (<pubPlace>{$rec?data?place}</pubPlace>) else (),
+                    if ($rec?data?publisher) then (<publisher>{$rec?data?publisher}</publisher>) else (),
+                    if ($rec?data?date) then (<date>{$rec?data?date}</date>) else ()
+                }</imprint>)
+(: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
+let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
+                        for $tag in $rec?data?tags?*?tag
+                            return if (matches($tag,'^\s*Subject:\s*') or matches($tag,'^\s*MS:\s*')) then (
+                                element relation {
+                                    attribute active {$local-uri},
+                                    if (matches($tag,'^\s*Subject:\s*')) then (
+                                        attribute ref {"dc:subject"},
+                                        element desc {substring-after($tag,"Subject: ")}
+                                    ) else (),
+                                    if (matches($tag,'^\s*MS:\s*')) then (
+                                        attribute ref{"dcterms:references"},
+                                        element desc {
+                                            element bibl {substring-after($tag,"MS: ")}
+                                        }
+                                    ) else ()
+                                }
+                            ) else ()
+                    }</listRelation>)
+(: Not sure if that is sufficient for an analytic check? following the TEI-guideline and the other script @github... :)
+let $tei-analytic := if($recordType = 'analytic') then
+                         <analytic>{
+                             $creator,
+                             $analytic-title,
+                             $all-idnos
+                         }</analytic>
+                         else ()
+let $tei-monogr := if ($recordType = "analytic" or $recordType = "monograph") then
+                    <monogr>{
+                        if($recordType = "analytic") then ()
+                        else $creator,
+                        if($recordType = "monograph") then $analytic-title
+                        else ($series-titles,$journal-titles),
+                        if ($tei-analytic) then () else ($all-idnos),
+                        if ($imprint) then ($imprint) else (),
+                        for $p in $rec?data?pages[. != '']
+                        return <biblScope unit="pp">{$p}</biblScope>,
+                        for $vol in $rec?data?volume[. != '']
+                        return <biblScope unit="vol">{$vol}</biblScope>
+                    }</monogr> else ()
+(: I haven't found an example file with series information to find the JSON equivalence to the tei structure, so have to continue on that :)
+let $tei-series := if($series-titles and $recordType = "monograph") then 
+                        <series>{$series-titles}</series>
+                    else()                        
+let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
+                   return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
+let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
+                   return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
 return     
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
             <fileDesc>
-                <titleStmt>
-                    {$titles-all}
-                    <sponsor>Syriaca.org: The Syriac Reference Portal</sponsor>
-                    <funder>The National Endowment for the Humanities</funder>
-                    <funder>The International Balzan Prize Foundation</funder>
-                    <principal>David A. Michelson</principal>
-                    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
-                    <editor role="general" ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
-                    <editor role="creator" ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
-                    <respStmt>
-                        <resp>Bibliography curation and TEI record generation by</resp>
-                        <name ref="http://syriaca.org/documentation/editors.xml#ngibson">Nathan P. Gibson</name>
-                    </respStmt>
-                </titleStmt>
+                <titleStmt>{(
+                    $titles-all,
+                    $zotero2tei:zotero-config//*:sponsor,
+                    $zotero2tei:zotero-config//*:funder,
+                    $zotero2tei:zotero-config//*:principal,
+                    $zotero2tei:zotero-config//*:editor,
+                    $zotero2tei:zotero-config//*:respStmt
+                    )}</titleStmt>
                 <publicationStmt>
-                    <authority>Syriaca.org: The Syriac Reference Portal</authority>
+                    <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
-                    <availability>
-                        <licence target="http://creativecommons.org/licenses/by/3.0/">
-                            <p>Distributed under a Creative Commons Attribution 3.0 Unported License.</p>
-                        </licence>
-                    </availability>
+                    {$zotero2tei:zotero-config//*:availability}
                     <date>{current-date()}</date>
                 </publicationStmt>
                 <sourceDesc>
@@ -240,8 +317,13 @@ return
         <text>
             <body>
                 <biblStruct>
-                  {'To be done'}
+                  {$tei-analytic}
+                  {$tei-monogr}
+                  {$tei-series}
+                  {$abstract}
+                  {$citedRange}
                 </biblStruct>
+                {$list-relations}
             </body>
         </text>
     </TEI>
