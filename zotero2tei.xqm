@@ -227,9 +227,10 @@ let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
 let $worldcat-uri := for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
                 return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri)
-let $refs := for $ref in $rec?data?url
-             return <ref target="{$ref}"/>
+let $refs := for $ref in $rec?data?url[. != '']
+             return <ref target="{$ref}"/>                
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
+
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
@@ -250,7 +251,7 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                         element desc {substring-after($tag,"Subject: ")}
                                     ) else (),
                                     if (matches($tag,'^\s*MS:\s*')) then (
-                                        attribute ref{"dcterms:reference"},
+                                        attribute ref{"dcterms:references"},
                                         element desc {
                                             element bibl {substring-after($tag,"MS: ")}
                                         }
