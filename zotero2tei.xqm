@@ -1,11 +1,11 @@
-xquery version "3.0";
+xquery version "3.1";
 (:
  : Modified by wsalesky for automation of workflow 
  : Used with get-zotero-data.xql
 :)
 
 (:
-    Convert TEI exported from Zotero to Syriaca TEI bibl records. 
+    Convert TEI/JSON exported from Zotero to Syriaca TEI bibl records. 
     This script makes the following CHANGES to TEI exported from Zotero: 
      - Adds a Syriaca.org URI as an idno and saves each biblStruct as an individual file.
      - Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero'
@@ -19,21 +19,14 @@ xquery version "3.0";
         should be done across all bibl records.
      - Changes respStmts with resp='translator' to editor[@role='translator']
 :)
-     
-(: KNOWN ISSUES
-    - If a bibl record already exists with the same Zotero ID, it is not overwritten, 
-        but subject tags are added to the existing record. 
-    - Subject tags (which contain the URI of a record which should cite the bibl) are merely 
-        kept as note[@type='tag']. They should be further processed with an additional script
-        to add them to the appropriate record. See add-citation-from-zotero-subject.xql
-    - This script may produce duplicate subject tags. :)
 module namespace zotero2tei="http://syriaca.org/zotero2tei";
-
+import module namespace http="http://expath.org/ns/http-client";
 declare default element namespace "http://www.tei-c.org/ns/1.0";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
 declare namespace functx = "http://www.functx.com";
 
 (: Access zotero-api configuration file :) 
+declare variable $zotero2tei:zotero-api := 'https://api.zotero.org';
 declare variable $zotero2tei:zotero-config := doc('zotero-config.xml');
 
 (:~ 
@@ -288,6 +281,22 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+let $getNotes := 
+                if($rec?meta?numChildren[. gt 0]) then
+                    let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
+                    let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
+                                        <http:header name="Connection" value="close"/>
+                                      </http:request>)
+                    return 
+                        if($children[1]/@status = '200') then 
+                                    let $notes := parse-json(util:binary-to-string($children[2]))
+                                    for $n in $notes?*
+                                    return 
+                                        if($n?data?note[matches(.,'^<p>PP:')]) then 
+                                            <citedRange unit="page">{replace(substring-after($n?data?note[matches(.,'^<p>PP:')],'PP: '),'<[^>]*>','')}</citedRange>
+                                        else ()
+                             else()
+                else ()
 return     
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
@@ -322,6 +331,7 @@ return
                   {$tei-series}
                   {$abstract}
                   {$citedRange}
+                  {$getNotes}
                 </biblStruct>
                 {$list-relations}
             </body>
