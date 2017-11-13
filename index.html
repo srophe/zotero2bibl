@@ -75,6 +75,9 @@
                         <li>Edit zotero-config.xml
                             <ul>
                                 <li>Add your Zotero group id</li>
+                                <li>Specify Zotero export format, TEI or JSON <br/>
+                                    <span class="small"><em>JSON will allow access to notes and tags. Note and tag rendering maybe repository specific and may need serialization may need to be changed in zotero2tei.xqm to match your needs.</em></span>
+                                </li>
                                 <li>
                                     Add the path to the data directory where you want to store Zotero bibliographic records in eXist.<br/>
                                     <span class="small">
@@ -82,6 +85,7 @@
                                     </span>
                                 </li>
                                 <li>Add the URI pattern to base an incremental URI on. example: http://syriaca.org/bibl</li>
+                                <li>Change TEI header information to be specific to your repository.</li>
                             </ul>
                         </li>
                     </ul>
@@ -93,6 +97,7 @@
                 </div>
                 <a href="get-zotero-data.xql?action=initiate" class="btn btn-info zotero">Initiate</a>
                 <a href="get-zotero-data.xql?action=update" class="btn btn-info zotero">Update</a>
+                <p> </p>
             </div>
         </div>
         <hr/>
