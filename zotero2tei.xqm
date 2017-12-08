@@ -210,7 +210,7 @@ let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
                         return <title level="j">{$journal}</title>                        
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
-let $local-uri := <idno type="URI">{$local-id}</idno>        
+let $local-uri := <idno type="URI">{$local-id}</idno>   
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
 let $zotero-idno := <idno type="zotero">{$rec?links?alternate?href}</idno>  
 (:  Equals the biblStruct/@corresp URI to idno with @type='URI' :)
@@ -218,8 +218,10 @@ let $zotero-idno-uri := <idno type="URI">{$rec?links?self?href}</idno>
 (:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
-let $worldcat-uri := for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
-                return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>
+let $worldcat-uri := 
+                (if($rec?data?extra[starts-with(.,'OCLC:')]) then <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after(.,'OCLC: ')))}</idno> else(),
+                for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
