@@ -81,7 +81,7 @@ let $titles-all := $rec//title[not(@type='short')]
 (: Local ID and URI :)
 let $local-uri := <idno type='URI'>{$local-id}</idno>        
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
-let $zotero-idno := <idno type='zotero'>{$rec/note[@type='tags']/note[@type='tag' and matches(.,'^\d+$')]/text()}</idno>
+let $zotero-idno := <idno type='URI'>{$rec/note[@type='tags']/note[@type='tag' and matches(.,'^\d+$')]/text()}</idno>
 (:    Changes the biblStruct/@corresp to an idno with @type='URI':)
 let $zotero-idno-uri := <idno type='URI'>{string($rec/@corresp)}</idno>    
 (:    Grabs URI in tags prefixed by 'Subject: '. :)
@@ -212,9 +212,9 @@ let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
-let $zotero-idno := <idno type="zotero">{$rec?links?alternate?href}</idno>  
+let $zotero-idno := <idno type="URI">{$rec?links?alternate?href}</idno>  
 (:  Equals the biblStruct/@corresp URI to idno with @type='URI' :)
-let $zotero-idno-uri := <idno type="URI">{$rec?links?self?href}</idno>
+let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zotero.org','www.zotero.org')}</idno>
 (:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
