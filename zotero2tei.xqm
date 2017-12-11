@@ -309,7 +309,38 @@ return
                     $zotero2tei:zotero-config//*:funder,
                     $zotero2tei:zotero-config//*:principal,
                     $zotero2tei:zotero-config//*:editor,
-                    $zotero2tei:zotero-config//*:respStmt
+                    (: Editors :)
+                    for $e in $rec?meta?createdByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    for $e in $rec?meta?lastModifiedByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    let $assigned := substring-after($e, 'Assigned: ')
+                    where $assigned != $rec?meta?createdByUser?username
+                    return
+                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,
+                    (: respStmt :)
+                    for $e in $rec?meta?createdByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <respStmt><resp>Record added to Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
+                    for $e in $rec?meta?lastModifiedByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <respStmt><resp>Record edited in Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    let $assigned := substring-after($e, 'Assigned: ')
+                    where $assigned != $rec?meta?createdByUser?username
+                    return 
+                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>
                     )}</titleStmt>
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
