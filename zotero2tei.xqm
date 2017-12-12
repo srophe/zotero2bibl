@@ -75,7 +75,7 @@ declare function zotero2tei:tei2tei($nodes as node()*) as item()* {
  : @param $rec TEI record from Zotero
  : @param $local-id local record id 
 :)
-declare function zotero2tei:build-new-record($rec as item()*, $local-id) {
+declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:string) {
 (: Titles from zotero record:)
 let $titles-all := $rec//title[not(@type='short')]
 (: Local ID and URI :)
@@ -181,12 +181,12 @@ return
  : NOTE needs to be completed. 
  : Sample JSON from Zotero at json-example.json
 :)
-declare function zotero2tei:build-new-record-json($rec, $local-id) {
-let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]                         
+declare function zotero2tei:build-new-record-json($rec as item()*, $local-id as xs:string) {
+let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]
 let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-uri/text(),'/',$ids) else $local-id
 let $itemType := $rec?data?itemType
 let $recordType := 	
-    if($itemType = 'book' and $rec?data?series != '') then 'monograph'
+    if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
     else if($itemType = ('journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
 (: Main titles from zotero record:)
@@ -219,9 +219,11 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
 let $worldcat-uri := 
-                (if($rec?data?extra[starts-with(.,'OCLC:')]) then <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after(.,'OCLC: ')))}</idno> else(),
-                for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
-                return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)
+                    (
+                    for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
+                    return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
+                    for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)                       
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
@@ -283,12 +285,10 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
-let $getNotes := 
+let $getNotes := <citedRange>Hey, this one has kids!</citedRange>(:
                 if($rec?meta?numChildren[. gt 0]) then
                     let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
-                    let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
-                                        <http:header name="Connection" value="close"/>
-                                      </http:request>)
+                    let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
                     return 
                         if($children[1]/@status = '200') then 
                                     let $notes := parse-json(util:binary-to-string($children[2]))
@@ -298,7 +298,7 @@ let $getNotes :=
                                             <citedRange unit="page">{replace(substring-after($n?data?note[matches(.,'^<p>PP:')],'PP: '),'<[^>]*>','')}</citedRange>
                                         else ()
                              else()
-                else ()
+                else ():)
 return     
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
@@ -309,7 +309,38 @@ return
                     $zotero2tei:zotero-config//*:funder,
                     $zotero2tei:zotero-config//*:principal,
                     $zotero2tei:zotero-config//*:editor,
-                    $zotero2tei:zotero-config//*:respStmt
+                    (: Editors :)
+                    for $e in $rec?meta?createdByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    for $e in $rec?meta?lastModifiedByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    let $assigned := substring-after($e, 'Assigned: ')
+                    where $assigned != $rec?meta?createdByUser?username
+                    return
+                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,
+                    (: respStmt :)
+                    for $e in $rec?meta?createdByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <respStmt><resp>Record added to Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
+                    for $e in $rec?meta?lastModifiedByUser
+                    let $uri := $e?links?*?href
+                    let $name := if($e?name[. != '']) then $e?name else $e?username
+                    return
+                        <respStmt><resp>Record edited in Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    let $assigned := substring-after($e, 'Assigned: ')
+                    where $assigned != $rec?meta?createdByUser?username
+                    return 
+                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>
                     )}</titleStmt>
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>

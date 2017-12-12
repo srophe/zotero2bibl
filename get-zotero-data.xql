@@ -12,6 +12,7 @@ xquery version "3.1";
 
 import module namespace http="http://expath.org/ns/http-client";
 import module namespace zotero2tei="http://syriaca.org/zotero2tei" at "zotero2tei.xqm";
+import module namespace console="http://exist-db.org/xquery/console";
 declare namespace tei="http://www.tei-c.org/ns/1.0";
 declare namespace output = "http://www.w3.org/2010/xslt-xquery-serialization";
 
@@ -37,28 +38,28 @@ declare variable $format := if($zotero-config//format/text() != '') then $zotero
  : @param $index-number
  : @param $format
 :)
-declare function local:process-items($record as item()?, $index-number as xs:integer, $format as xs:string?){
+declare function local:process-records($record as item()?, $index-number as xs:integer, $format as xs:string?){
     let $idNumber :=
                     if($zotero-config//id-pattern/text() = 'zotero' and $format = 'json') then
                         tokenize($record?links?alternate?href,'/')[last()]
                     else if($zotero-config//id-pattern/text() = 'zotero' and $format ='tei') then
                         tokenize($record/@corresp,'/')[last()]
                     else $index-number                   
-    let $id := local:make-local-uri($index-number)
+    (:let $id := local:make-local-uri($index-number):)
     let $file-name := concat($idNumber,'.xml')
-    let $new-record := zotero2tei:build-new-record($record, $id, $format)
-    return
+    let $new-record := zotero2tei:build-new-record($record, $idNumber, $format)
+    return 
         if($idNumber != '') then 
             try {
-                <response status="200">
+                    <response status="200">
                         <message>{xmldb:store($data-dir, xmldb:encode-uri($file-name), $new-record)}</message>
                     </response>
             } catch *{
                 <response status="fail">
-                    <message>Failed to add resource {$id}: {concat($err:code, ": ", $err:description)}</message>
+                    <message>Failed to add resource {$file-name}: {concat($err:code, ": ", $err:description), console:log(concat($err:code, ": ", $err:description))}</message>
                 </response>
             } 
-        else ()
+        else ()  
 };
 
 (:~
@@ -99,8 +100,8 @@ declare function local:update-version($version as xs:string?) {
  : @param $start
  : @param $perpage
 :)
-declare function local:get-next($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
-let $items := local:get-zotero-data($total, $start, $perpage,$format)
+declare function local:process-results($results as item()*,$total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
+let $items := $results
 let $headers := $items[1]
 let $results := 
     if($format = 'json') then 
@@ -113,26 +114,26 @@ return
         if($format = 'json') then
             for $rec at $p in $results?*
             let $rec-num := $start + $p
-            return local:process-items($rec, $rec-num, $format)
+            return local:process-records($rec, $rec-num, $format)
         else 
             for $rec at $p in $results//tei:biblStruct
             let $rec-num := $start + $p
-            return local:process-items($rec, $rec-num, $format),
+            return local:process-records($rec, $rec-num, $format),
         if($next) then 
-            local:get-next($total, $next, $perpage,$format)
+          local:process-results(local:get-zotero-data($total, $start, $perpage,$format), $total, $next, $perpage,$format)
         else ()
         )
     else if($headers/@name="Backoff") then
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
-            return local:get-next($total, $next, $perpage,$format)
+            return local:process-results(local:get-zotero-data($total, $start, $perpage,$format), $total, $next, $perpage,$format)
         )
     else if($headers/@name="Retry-After") then   
         (<message status="{$headers/@status}">{string($headers/@message)}</message>,
             let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value]))
-            return local:get-next($total, $next, $perpage,$format)
+            return local:process-results(local:get-zotero-data($total, $start, $perpage,$format), $total, $next, $perpage,$format)
         )
-    else  <message status="{$headers/@status}">{string($headers/@message)}</message>          
+    else  <message status="{$headers/@status}">{string($headers/@message)}</message>  
 };
 
 (:~
@@ -143,16 +144,12 @@ return
 :)
 declare function local:get-zotero-data($total as xs:integer?, $start as xs:integer?, $perpage as xs:integer?, $format as xs:string?){
 let $start := if(not(empty($start))) then concat('&amp;start=',$start) else ()
-(:let $limit := if(not(empty($perpage))) then concat('&amp;limit=',$perpage) else ():)
 let $url := concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start)
 return 
     if(request:get-parameter('action', '') = 'initiate') then 
-        http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
-                         <http:header name="Connection" value="close"/>
-                       </http:request>)
+        http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
     else                    
         http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
-                         <http:header name="Connection" value="close"/>
                          <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
                        </http:request>)                       
 };
@@ -162,7 +159,7 @@ return
 :)
 declare function local:get-zotero(){
     let $items := local:get-zotero-data((), (), (),$format)
-    let $items-info := local:get-zotero-data((), (), (),$format)[1]
+    let $items-info := $items[1]
     let $total := $items-info/http:header[@name='total-results']/@value
     let $version := $items-info/http:header[@name='last-modified-version']/@value
     let $perpage := 24
@@ -170,9 +167,9 @@ declare function local:get-zotero(){
     let $start := 0
     return 
         if($items-info/@status = '200') then
-          (local:get-next($total, $start, $perpage,$format),
+          (local:process-results($items, $total, $start, $perpage,$format),
            local:update-version($version))
-        else <message status="{$items-info/@status}">{string($items-info/@message)}</message>   
+        else <message status="{$items-info/@status}">{string($items-info/@message)}</message>
 };
 
 (: Helper function to recursively create a collection hierarchy. :)
