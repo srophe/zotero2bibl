@@ -244,7 +244,7 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                 element relation {
                                     attribute active {$local-uri},
                                     if (matches($tag,'^\s*(Subject|Part|Section|Book):\s*')) then (
-                                        let $type := replace($tag,'^\s*(.+?):\s*','$1')
+                                        let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
                                         return
                                         attribute ref {"dc:subject"},
                                         if (string-length($type)) then 
