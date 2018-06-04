@@ -4,7 +4,7 @@
     <last-modified-version>1709</last-modified-version>
     <!-- format json or tei -->
     <format>json</format>
-    <data-dir>/db/apps/bibl-test-app</data-dir>
+    <data-dir>/db/apps/ba-data/data/bibl/tei</data-dir>
     <base-uri>http://biblia-arabica.com/bibl</base-uri>
     <!-- Allowed values: auto-generated, zotero -->
     <id-pattern>zotero</id-pattern>
