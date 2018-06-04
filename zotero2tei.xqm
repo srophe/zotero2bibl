@@ -240,12 +240,16 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
 (: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
 let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                         for $tag in $rec?data?tags?*?tag
-                            return if (matches($tag,'^\s*Subject:\s*') or matches($tag,'^\s*MS:\s*')) then (
+                            return if (matches($tag,'^\s*(MS|Subject|Part|Section|Book):\s*')) then (
                                 element relation {
                                     attribute active {$local-uri},
-                                    if (matches($tag,'^\s*Subject:\s*')) then (
+                                    if (matches($tag,'^\s*(Subject|Part|Section|Book):\s*')) then (
+                                        let $type := replace($tag,'^\s*(.+?):\s*','$1')
                                         attribute ref {"dc:subject"},
-                                        element desc {substring-after($tag,"Subject: ")}
+                                        if (length($type)) then 
+                                            attribute type {lower-case($type)}
+                                            else(),
+                                        element desc {substring-after($tag,concat($type,": "))}
                                     ) else (),
                                     if (matches($tag,'^\s*MS:\s*')) then (
                                         attribute ref{"dcterms:references"},
