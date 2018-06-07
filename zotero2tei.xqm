@@ -240,10 +240,10 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
 (: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
 let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                         for $tag in $rec?data?tags?*?tag
-                            return if (matches($tag,'^\s*(MS|Subject|Part|Section|Book):\s*')) then (
+                            return if (matches($tag,'^\s*(MS|Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
                                 element relation {
                                     attribute active {$local-uri},
-                                    if (matches($tag,'^\s*(Subject|Part|Section|Book):\s*')) then (
+                                    if (matches($tag,'^\s*(Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
                                         let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
                                         return
                                         (attribute ref {"dc:subject"},
@@ -255,7 +255,16 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                     if (matches($tag,'^\s*MS:\s*')) then (
                                         attribute ref{"dcterms:references"},
                                         element desc {
-                                            element bibl {substring-after($tag,"MS: ")}
+                                            element msDesc {
+                                                element msIdentifier {
+                                                    element settlement {normalize-space(tokenize(substring-after($tag,"MS: "),",")[1])},
+                                                    element collection {normalize-space(tokenize(substring-after($tag,"MS: "),",")[2])},
+                                                    element idno {
+                                                        attribute type {"shelfmark"},
+                                                        normalize-space(replace($tag,"MS:.*?,.*?,",""))
+                                                        }
+                                                }
+                                            }
                                         }
                                     ) else ()
                                 }
