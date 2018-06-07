@@ -246,12 +246,12 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                     if (matches($tag,'^\s*(Subject|Part|Section|Book):\s*')) then (
                                         let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
                                         return
-                                        attribute ref {"dc:subject"},
+                                        (attribute ref {"dc:subject"},
                                         if (string-length($type)) then 
                                             attribute type {lower-case($type)}
                                             else(),
                                         element desc {substring-after($tag,concat($type,": "))}
-                                    ) else (),
+                                    )) else (),
                                     if (matches($tag,'^\s*MS:\s*')) then (
                                         attribute ref{"dcterms:references"},
                                         element desc {
