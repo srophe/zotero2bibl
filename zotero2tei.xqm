@@ -99,8 +99,11 @@ let $issn-idnos := $rec/idno[@type='ISSN']
 let $isbns := tokenize(normalize-space($rec/idno[@type='ISBN']/text()),'\s')
 let $isbn-idnos := 
         for $isbn in $isbns
-        return <idno type='ISBN'>{$isbn}</idno>        
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$callNumber-idnos,$issn-idnos,$isbn-idnos)
+        return <idno type='ISBN'>{$isbn}</idno>       
+let $doi-idnos :=
+    for $doi in $rec/idno[@type='DOI']
+    return <idno type='URI'>https://doi.org/{normalize-space($doi)}</idno>
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$callNumber-idnos,$issn-idnos,$isbn-idnos,$doi-idnos)
 (:    Reconstructs record using transformed data. :)
 let $tei-analytic :=
         if ($rec/analytic) then
@@ -299,6 +302,7 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+(: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
                     let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
