@@ -299,7 +299,7 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
-let $getNotes := <citedRange>Hey, this one has kids!</citedRange>(:
+let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
                     let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
                     let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
@@ -312,7 +312,7 @@ let $getNotes := <citedRange>Hey, this one has kids!</citedRange>(:
                                             <citedRange unit="page">{replace(substring-after($n?data?note[matches(.,'^<p>PP:')],'PP: '),'<[^>]*>','')}</citedRange>
                                         else ()
                              else()
-                else ():)
+                else ()
 return     
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
