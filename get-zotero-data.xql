@@ -32,7 +32,7 @@ declare variable $base-uri := $zotero-config//base-uri/text();
 declare variable $format := if($zotero-config//format/text() != '') then $zotero-config//format/text() else 'tei';
 
 (:~
- : Convert records to Syriaca.org complient TEI records, using zotero2tei.xqm
+ : Convert records to Syriaca.org compliant TEI records, using zotero2tei.xqm
  : Save records to the database. 
  : @param $record 
  : @param $index-number
