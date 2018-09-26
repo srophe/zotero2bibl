@@ -302,6 +302,9 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+(: checks existing doc to compare editing history, etc. :)
+let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
+let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
 (: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
@@ -317,10 +320,7 @@ let $getNotes :=
                                         else ()
                              else()
                 else ()
-return  
-(: checks existing doc to compare editing history, etc. :)
-let $existing-doc := doc(concat($data-dir,'/',$local-id,'.xml'))
-let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
+return
 
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
@@ -356,7 +356,7 @@ let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/r
                         <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,:)
                     for $e in $rec?data?tags?*?tag[starts-with(.,'Edited:')]
                     let $edited := substring-after($e, 'Edited: ')
-                    where $edited = not($rec?meta?createdByUser?name,$rec?meta?lastModifiedByUser?name)
+                    where $edited != ($rec?meta?createdByUser?name,$rec?meta?lastModifiedByUser?name)
                     return
                         <editor role="creator">{$edited}</editor>,
                     (: respStmt :)
