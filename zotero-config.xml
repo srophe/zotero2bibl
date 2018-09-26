@@ -13,7 +13,7 @@
     <funder xmlns="http://www.tei-c.org/ns/1.0">Deutsche Forschungsgemeinschaft</funder>
     <principal xmlns="http://www.tei-c.org/ns/1.0">Ronny Vollandt</principal>
     <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="https://biblia-arabica.com/documentation/editors.xml#rvollandt">Ronny Vollandt</editor>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="https://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
+    <editor xmlns="http://www.tei-c.org/ns/1.0" role="associate" ref="https://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
     <respStmt xmlns="http://www.tei-c.org/ns/1.0">
         <resp>Bibliography curation by</resp>
         <name>Biblia Arabica research team</name>
