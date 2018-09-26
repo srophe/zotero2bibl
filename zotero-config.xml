@@ -4,23 +4,27 @@
     <last-modified-version>1709</last-modified-version>
     <!-- format json or tei -->
     <format>json</format>
-    <data-dir>/db/apps/ba-data/data/bibl/tei</data-dir>
-    <base-uri>http://biblia-arabica.com/bibl</base-uri>
+    <data-dir>/db/apps/ba-data-dev/data/bibl/tei</data-dir>
+    <base-uri>https://biblia-arabica.com/bibl</base-uri>
     <!-- Allowed values: auto-generated, zotero -->
     <id-pattern>zotero</id-pattern>
     <!-- Values used to build TEI records -->
     <sponsor xmlns="http://www.tei-c.org/ns/1.0">Biblia Arabica</sponsor>
     <funder xmlns="http://www.tei-c.org/ns/1.0">Deutsche Forschungsgemeinschaft</funder>
     <principal xmlns="http://www.tei-c.org/ns/1.0">Ronny Vollandt</principal>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://biblia-arabica.com/documentation/editors.xml#rvollandt">Ronny Vollandt</editor>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
+    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="https://biblia-arabica.com/documentation/editors.xml#rvollandt">Ronny Vollandt</editor>
+    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="https://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</editor>
     <respStmt xmlns="http://www.tei-c.org/ns/1.0">
         <resp>Bibliography curation by</resp>
         <name>Biblia Arabica research team</name>
     </respStmt>
     <respStmt xmlns="http://www.tei-c.org/ns/1.0">
         <resp>TEI encoding by</resp>
-        <name ref="http://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</name>
+        <name ref="https://biblia-arabica.com/documentation/editors.xml#ngibson">Nathan P. Gibson</name>
+    </respStmt>
+    <respStmt xmlns="http://www.tei-c.org/ns/1.0">
+        <resp>Zotero to TEI scripting by</resp>
+        <name ref="https://biblia-arabica.com/documentation/editors.xml#wsalesky">Winona Salesky</name>
     </respStmt>
     <availability xmlns="http://www.tei-c.org/ns/1.0">
         <licence target="http://creativecommons.org/licenses/by/3.0/">
