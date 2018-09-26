@@ -300,7 +300,13 @@ let $tei-series := if($series-titles and $recordType = "monograph") then
                     else()                        
 let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
+(:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
+(:                    This regex doesn't seem to be working! See e.g., 2BXR3P3J.xml :)
+                    let $abstract-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/.*/itemKey/([0-9A-Za-z]+).*\}')
+                    let $abstract-link-replace := concat($zotero2tei:zotero-config//*:base-uri/text(),'/$1')
+                    let $abstract-text-linked := 
+                        replace ($a,$abstract-link-regex,$abstract-link-replace)
                    return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
 (: checks existing doc to compare editing history, etc. :)
 let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
