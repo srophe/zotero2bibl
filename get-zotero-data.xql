@@ -145,7 +145,7 @@ declare function local:get-zotero-data($url){
 declare function local:get-zotero(){
     let $start := if(request:get-parameter('start', '') != '') then concat('&amp;start=',request:get-parameter('start', '')) else '&amp;start=0'
     let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=100'
-    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start, $limit)
+    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,if($format='json') then '&amp;include=bib,data' else(),$start, $limit)
     let $items := local:get-zotero-data($url)
     let $items-info := $items[1]
     let $total := $items-info/http:header[@name='total-results']/@value

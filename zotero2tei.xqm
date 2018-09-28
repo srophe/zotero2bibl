@@ -326,6 +326,8 @@ let $getNotes :=
                                         else ()
                              else()
                 else ()
+                
+let $citation := element bibl {attribute type {'formatted'}, attribute subtype {'http://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $rec?bib}
 return
 
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
@@ -414,6 +416,7 @@ return
                   {$citedRange}
                   {$getNotes}
                 </biblStruct>
+                {$citation},
                 {$list-relations}
             </body>
         </text>
