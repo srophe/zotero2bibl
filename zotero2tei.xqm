@@ -327,7 +327,23 @@ let $getNotes :=
                              else()
                 else ()
                 
-let $citation := element bibl {attribute type {'formatted'}, attribute subtype {'http://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $rec?bib}
+let $citation := 
+    let $html-citation := $rec?bib
+    let $html-i-regex := '(&lt;i&gt;)(.+?)(&lt;\/i&gt;)'
+    let $html-i-analyze := 
+        analyze-string($html-citation,$html-i-regex)
+    let $tei-i := 
+        for $text in $html-i-analyze/*
+        return 
+            if ($text/name()='non-match') then $text/text()
+            else element hi {attribute rend {'italic'},$text/fn:group[@nr=2]/text()}
+    let $tei-citation := 
+        for $text in $tei-i
+        let $no-tags := util:unescape-uri(normalize-space(replace(replace($text,'&lt;.+?&gt;',''),'&amp;',util:unescape-uri('&amp;','UTF-8'))),'UTF-8')
+        return 
+            if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
+return element bibl {attribute type {'formatted'}, attribute subtype {'http://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
+
 return
 
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
