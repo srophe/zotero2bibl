@@ -302,12 +302,15 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 (:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
-(:                    This regex doesn't seem to be working! See e.g., 2BXR3P3J.xml :)
-                    let $abstract-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/.*/itemKey/([0-9A-Za-z]+).*\}')
-                    let $abstract-link-replace := concat($zotero2tei:zotero-config//*:base-uri/text(),'/$1')
-                    let $abstract-text-linked := 
-                        replace ($a,$abstract-link-regex,$abstract-link-replace)
-                   return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
+    let $a-link-replace := $zotero2tei:zotero-config//*:base-uri/text()
+    let $a-text-linked := 
+        for $node in analyze-string($a,$a-link-regex)/*
+        let $url := concat($a-link-replace,'/',$node/fn:group/text())
+        let $ref := <ref target='{$url}'>{$url}</ref>
+        return if ($node/name()='match') then $ref else $node/text()
+    return 
+    <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a-text-linked}</note>
 (: checks existing doc to compare editing history, etc. :)
 let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
 let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
