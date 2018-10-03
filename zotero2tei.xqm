@@ -345,7 +345,7 @@ let $citation :=
         let $no-tags := util:unescape-uri(normalize-space(replace(replace($text,'&lt;.+?&gt;',''),'&amp;',util:unescape-uri('&amp;','UTF-8'))),'UTF-8')
         return 
             if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
-return element bibl {attribute type {'formatted'}, attribute subtype {'http://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
+return element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
 
 return
 
@@ -447,3 +447,4 @@ declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:st
         zotero2tei:build-new-record-json($rec, $local-id)
     else zotero2tei:build-new-record($rec, $local-id)
 };
+
