@@ -339,10 +339,10 @@ let $citation :=
         for $text in $html-i-analyze/*
         return 
             if ($text/name()='non-match') then $text/text()
-            else element hi {attribute rend {'italic'},$text/fn:group[@nr=2]/text()}
+            else element title {attribute level {'m'},$text/fn:group[@nr=2]/text()}
     let $tei-citation := 
         for $text in $tei-i
-        let $no-tags := util:unescape-uri(normalize-space(replace(replace($text,'&lt;.+?&gt;',''),'&amp;',util:unescape-uri('&amp;','UTF-8'))),'UTF-8')
+        let $no-tags := parse-xml-fragment(normalize-space(replace($text,'&lt;.+?&gt;','')))
         return 
             if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
 return element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
