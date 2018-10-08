@@ -112,16 +112,16 @@ declare function local:process-results($results as item()*){
             else 
                 for $rec at $p in $results//tei:biblStruct
                 return local:process-records($rec, $format)
-        else if($headers/@name="Backoff") then
-            (<message status="{$headers/@status}">{string($headers/@message)}</message>,
-                let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
-                return local:get-zotero()
-            )
-        else if($headers/@name="Retry-After") then   
-            (<message status="{$headers/@status}">{string($headers/@message)}</message>,
-                let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value]))
-                return local:get-zotero()
-            )
+(:        else if($headers/@name="Backoff") then:)
+(:            (<message status="{$headers/@status}">{string($headers/@message)}</message>,:)
+(:                let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value])):)
+(:                return local:get-zotero():)
+(:            ):)
+(:        else if($headers/@name="Retry-After") then   :)
+(:            (<message status="{$headers/@status}">{string($headers/@message)}</message>,:)
+(:                let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value])):)
+(:                return local:get-zotero():)
+(:            ):)
         else  <message status="{$headers/@status}">{string($headers/@message)}</message>    
 };
 
