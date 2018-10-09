@@ -332,20 +332,26 @@ let $getNotes :=
                 
 let $citation := 
     let $html-citation := $rec?bib
-    let $html-i-regex := '(&lt;i&gt;)(.+?)(&lt;\/i&gt;)'
+    let $html-no-breaks := replace($html-citation,'\\n\s*','')
+    let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
     let $html-i-analyze := 
-        analyze-string($html-citation,$html-i-regex)
+        analyze-string($html-no-breaks,$html-i-regex)
     let $tei-i := 
         for $text in $html-i-analyze/*
         return 
-            if ($text/name()='non-match') then $text/text()
-            else element title {attribute level {'m'},$text/fn:group[@nr=2]/text()}
+            let $title-level := 
+                if ($text/descendant::fn:group/@nr=2) then 'a'
+                else 'm'
+            return
+                if ($text/name()='non-match') then $text/text()
+                else element title {attribute level {$title-level},$text/fn:group[@nr=4]/text()}
     let $tei-citation := 
         for $text in $tei-i
-        let $no-tags := parse-xml-fragment(normalize-space(replace($text,'&lt;.+?&gt;','')))
+        let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
         return 
             if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
-return element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
+return 
+    element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
 
 return
 
@@ -435,7 +441,7 @@ return
                   {$citedRange}
                   {$getNotes}
                 </biblStruct>
-                {$citation},
+                {$citation}
                 {$list-relations}
             </body>
         </text>
