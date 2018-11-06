@@ -32,7 +32,7 @@ declare variable $base-uri := $zotero-config//base-uri/text();
 declare variable $format := if($zotero-config//format/text() != '') then $zotero-config//format/text() else 'tei';
 
 (:~
- : Convert records to Syriaca.org complient TEI records, using zotero2tei.xqm
+ : Convert records to Syriaca.org compliant TEI records, using zotero2tei.xqm
  : Save records to the database. 
  : @param $record 
  : @param $index-number
@@ -112,16 +112,16 @@ declare function local:process-results($results as item()*){
             else 
                 for $rec at $p in $results//tei:biblStruct
                 return local:process-records($rec, $format)
-        else if($headers/@name="Backoff") then
-            (<message status="{$headers/@status}">{string($headers/@message)}</message>,
-                let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value]))
-                return local:get-zotero()
-            )
-        else if($headers/@name="Retry-After") then   
-            (<message status="{$headers/@status}">{string($headers/@message)}</message>,
-                let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value]))
-                return local:get-zotero()
-            )
+(:        else if($headers/@name="Backoff") then:)
+(:            (<message status="{$headers/@status}">{string($headers/@message)}</message>,:)
+(:                let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value])):)
+(:                return local:get-zotero():)
+(:            ):)
+(:        else if($headers/@name="Retry-After") then   :)
+(:            (<message status="{$headers/@status}">{string($headers/@message)}</message>,:)
+(:                let $wait := util:wait(xs:integer($headers[@name="Retry-After"][@value])):)
+(:                return local:get-zotero():)
+(:            ):)
         else  <message status="{$headers/@status}">{string($headers/@message)}</message>    
 };
 
@@ -145,7 +145,7 @@ declare function local:get-zotero-data($url){
 declare function local:get-zotero(){
     let $start := if(request:get-parameter('start', '') != '') then concat('&amp;start=',request:get-parameter('start', '')) else '&amp;start=0'
     let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=100'
-    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,$start, $limit)
+    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,if($format='json') then '&amp;include=bib,data' else(),$start, $limit)
     let $items := local:get-zotero-data($url)
     let $items-info := $items[1]
     let $total := $items-info/http:header[@name='total-results']/@value

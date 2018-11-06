@@ -71,7 +71,7 @@ declare function zotero2tei:tei2tei($nodes as node()*) as item()* {
 };
 
 (:~
- : Build new TEI record form TEI
+ : Build new TEI record from TEI
  : @param $rec TEI record from Zotero
  : @param $local-id local record id 
 :)
@@ -150,8 +150,8 @@ return
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
                     <availability>
-                        <licence target="http://creativecommons.org/licenses/by/3.0/">
-                            <p>Distributed under a Creative Commons Attribution 3.0 Unported License.</p>
+                        <licence target="https://creativecommons.org/licenses/by/4.0/">
+                            <p>Distributed under a Creative Commons Attribution 4.0 International License (CC BY 4.0).</p>
                         </licence>
                     </availability>
                     <date>{current-date()}</date>
@@ -300,8 +300,20 @@ let $tei-series := if($series-titles and $recordType = "monograph") then
                     else()                        
 let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
+(:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
-                   return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
+    let $a-link-replace := $zotero2tei:zotero-config//*:base-uri/text()
+    let $a-text-linked := 
+        for $node in analyze-string($a,$a-link-regex)/*
+        let $url := concat($a-link-replace,'/',$node/fn:group/text())
+        let $ref := <ref target='{$url}'>{$url}</ref>
+        return if ($node/name()='match') then $ref else $node/text()
+    return 
+    <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a-text-linked}</note>
+(: checks existing doc to compare editing history, etc. :)
+let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
+let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
 (: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
@@ -317,7 +329,32 @@ let $getNotes :=
                                         else ()
                              else()
                 else ()
-return     
+                
+let $citation := 
+    let $html-citation := $rec?bib
+    let $html-no-breaks := replace($html-citation,'\\n\s*','')
+    let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
+    let $html-i-analyze := 
+        analyze-string($html-no-breaks,$html-i-regex)
+    let $tei-i := 
+        for $text in $html-i-analyze/*
+        return 
+            let $title-level := 
+                if ($text/descendant::fn:group/@nr=2) then 'a'
+                else 'm'
+            return
+                if ($text/name()='non-match') then $text/text()
+                else element title {attribute level {$title-level},$text/fn:group[@nr=4]/text()}
+    let $tei-citation := 
+        for $text in $tei-i
+        let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
+        return 
+            if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
+return 
+    element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
+
+return
+
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
             <fileDesc>
@@ -338,11 +375,23 @@ return
                     let $name := if($e?name[. != '']) then $e?name else $e?username
                     return
                         <editor role="creator" ref="{$uri}">{$name}</editor>,
-                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    for $e in $existing-zotero-editors[name/@ref != $rec?meta?lastModifiedByUser?links?*?href]
+                    let $uri := $existing-zotero-editors/name/@ref
+                    let $name := $existing-zotero-editors/name/text()
+                    return 
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    (: Replacing "Assigned: " with "Edited: " but with no username. 
+                    Will duplicate editor if name is listed differently in Zotero. :)
+                    (:for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
                     let $assigned := substring-after($e, 'Assigned: ')
                     where $assigned != $rec?meta?createdByUser?username
                     return
-                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,
+                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,:)
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Edited:')]
+                    let $edited := substring-after($e, 'Edited: ')
+                    where $edited != ($rec?meta?createdByUser?name,$rec?meta?lastModifiedByUser?name)
+                    return
+                        <editor role="creator">{$edited}</editor>,
                     (: respStmt :)
                     for $e in $rec?meta?createdByUser
                     let $uri := $e?links?*?href
@@ -354,11 +403,19 @@ return
                     let $name := if($e?name[. != '']) then $e?name else $e?username
                     return
                         <respStmt><resp>Record edited in Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
-                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    for $e in $existing-zotero-editors[name/@ref != $rec?meta?lastModifiedByUser?links?*?href]
+                    return 
+                        $existing-zotero-editors,                    
+                    (: Replacing "Assigned: " with "Edited: " but with no username :)
+                    (:for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
                     let $assigned := substring-after($e, 'Assigned: ')
                     where $assigned != $rec?meta?createdByUser?username
                     return 
-                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>
+                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>:)
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Edited:')]
+                    let $edited := substring-after($e, 'Edited: ')
+                    return 
+                        <respStmt><resp>Primary editing by</resp><name>{$edited}</name></respStmt>
                     )}</titleStmt>
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
@@ -384,6 +441,7 @@ return
                   {$citedRange}
                   {$getNotes}
                 </biblStruct>
+                {$citation}
                 {$list-relations}
             </body>
         </text>
@@ -395,3 +453,4 @@ declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:st
         zotero2tei:build-new-record-json($rec, $local-id)
     else zotero2tei:build-new-record($rec, $local-id)
 };
+
