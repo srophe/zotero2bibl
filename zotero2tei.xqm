@@ -230,7 +230,18 @@ let $worldcat-uri :=
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
-
+(: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
+let $lang := if($rec?data?language != '') then
+                element textLang { 
+                    attribute mainLang {tokenize($rec?data?language,',')[1]},
+                    if(count(tokenize($rec?data?language,',')) gt 1) then
+                      attribute otherLangs {
+                        normalize-space(string-join(
+                            tokenize($rec?data?language,',')[position() gt 1],' ' 
+                            ))}  
+                    else ()
+                }  
+             else ()
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
@@ -288,6 +299,7 @@ let $tei-monogr := if ($recordType = "analytic" or $recordType = "monograph") th
                         if($recordType = "monograph") then $analytic-title
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
+                        if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
                         for $p in $rec?data?pages[. != '']
                         return <biblScope unit="pp">{$p}</biblScope>,
