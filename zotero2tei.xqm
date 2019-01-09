@@ -231,7 +231,7 @@ let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
-let $lang := if($rec?data?language != '') then
+let $lang := if($rec?data?language) then
                 element textLang { 
                     attribute mainLang {tokenize($rec?data?language,',')[1]},
                     if(count(tokenize($rec?data?language,',')) gt 1) then
@@ -362,11 +362,10 @@ let $citation :=
         let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
         return 
             if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
-return 
+    return 
     element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
 
 return
-
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
             <fileDesc>
