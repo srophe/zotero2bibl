@@ -241,7 +241,7 @@ let $lang := if($rec?data?language) then
                             ))}  
                     else ()
                 }  
-             else ()
+             else ()             
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
