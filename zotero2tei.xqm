@@ -71,11 +71,11 @@ declare function zotero2tei:tei2tei($nodes as node()*) as item()* {
 };
 
 (:~
- : Build new TEI record form TEI
+ : Build new TEI record from TEI
  : @param $rec TEI record from Zotero
  : @param $local-id local record id 
 :)
-declare function zotero2tei:build-new-record($rec as item()*, $local-id) {
+declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:string) {
 (: Titles from zotero record:)
 let $titles-all := $rec//title[not(@type='short')]
 (: Local ID and URI :)
@@ -99,8 +99,11 @@ let $issn-idnos := $rec/idno[@type='ISSN']
 let $isbns := tokenize(normalize-space($rec/idno[@type='ISBN']/text()),'\s')
 let $isbn-idnos := 
         for $isbn in $isbns
-        return <idno type='ISBN'>{$isbn}</idno>        
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$callNumber-idnos,$issn-idnos,$isbn-idnos)
+        return <idno type='ISBN'>{$isbn}</idno>       
+let $doi-idnos :=
+    for $doi in $rec/idno[@type='DOI']
+    return <idno type='URI'>https://doi.org/{normalize-space($doi)}</idno>
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$callNumber-idnos,$issn-idnos,$isbn-idnos,$doi-idnos)
 (:    Reconstructs record using transformed data. :)
 let $tei-analytic :=
         if ($rec/analytic) then
@@ -147,8 +150,8 @@ return
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
                     <availability>
-                        <licence target="http://creativecommons.org/licenses/by/3.0/">
-                            <p>Distributed under a Creative Commons Attribution 3.0 Unported License.</p>
+                        <licence target="https://creativecommons.org/licenses/by/4.0/">
+                            <p>Distributed under a Creative Commons Attribution 4.0 International License (CC BY 4.0).</p>
                         </licence>
                     </availability>
                     <date>{current-date()}</date>
@@ -181,12 +184,12 @@ return
  : NOTE needs to be completed. 
  : Sample JSON from Zotero at json-example.json
 :)
-declare function zotero2tei:build-new-record-json($rec, $local-id) {
-let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]                         
+declare function zotero2tei:build-new-record-json($rec as item()*, $local-id as xs:string) {
+let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]
 let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-uri/text(),'/',$ids) else $local-id
 let $itemType := $rec?data?itemType
 let $recordType := 	
-    if($itemType = 'book' and $rec?data?series != '') then 'monograph'
+    if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
     else if($itemType = ('journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
 (: Main titles from zotero record:)
@@ -219,13 +222,26 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
 let $worldcat-uri := 
-                (if($rec?data?extra[starts-with(.,'OCLC:')]) then <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after(.,'OCLC: ')))}</idno> else(),
-                for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
-                return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)
+                    (
+                    for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
+                    return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
+                    for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)                       
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
-
+(: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
+let $lang := if($rec?data?language) then
+                element textLang { 
+                    attribute mainLang {tokenize($rec?data?language,',')[1]},
+                    if(count(tokenize($rec?data?language,',')) gt 1) then
+                      attribute otherLangs {
+                        normalize-space(string-join(
+                            tokenize($rec?data?language,',')[position() gt 1],' ' 
+                            ))}  
+                    else ()
+                }  
+             else ()             
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
@@ -238,17 +254,31 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
 (: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
 let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                         for $tag in $rec?data?tags?*?tag
-                            return if (matches($tag,'^\s*Subject:\s*') or matches($tag,'^\s*MS:\s*')) then (
+                            return if (matches($tag,'^\s*(MS|Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
                                 element relation {
                                     attribute active {$local-uri},
-                                    if (matches($tag,'^\s*Subject:\s*')) then (
-                                        attribute ref {"dc:subject"},
-                                        element desc {substring-after($tag,"Subject: ")}
-                                    ) else (),
+                                    if (matches($tag,'^\s*(Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
+                                        let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
+                                        return
+                                        (attribute ref {"dc:subject"},
+                                        if (string-length($type)) then 
+                                            attribute type {lower-case($type)}
+                                            else(),
+                                        element desc {substring-after($tag,concat($type,": "))}
+                                    )) else (),
                                     if (matches($tag,'^\s*MS:\s*')) then (
                                         attribute ref{"dcterms:references"},
                                         element desc {
-                                            element bibl {substring-after($tag,"MS: ")}
+                                            element msDesc {
+                                                element msIdentifier {
+                                                    element settlement {normalize-space(tokenize(substring-after($tag,"MS: "),",")[1])},
+                                                    element collection {normalize-space(tokenize(substring-after($tag,"MS: "),",")[2])},
+                                                    element idno {
+                                                        attribute type {"shelfmark"},
+                                                        normalize-space(replace($tag,"MS:.*?,.*?,",""))
+                                                        }
+                                                }
+                                            }
                                         }
                                     ) else ()
                                 }
@@ -269,6 +299,7 @@ let $tei-monogr := if ($recordType = "analytic" or $recordType = "monograph") th
                         if($recordType = "monograph") then $analytic-title
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
+                        if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
                         for $p in $rec?data?pages[. != '']
                         return <biblScope unit="pp">{$p}</biblScope>,
@@ -281,14 +312,25 @@ let $tei-series := if($series-titles and $recordType = "monograph") then
                     else()                        
 let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
+(:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
-                   return <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a}</note>
+    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
+    let $a-link-replace := $zotero2tei:zotero-config//*:base-uri/text()
+    let $a-text-linked := 
+        for $node in analyze-string($a,$a-link-regex)/*
+        let $url := concat($a-link-replace,'/',$node/fn:group/text())
+        let $ref := <ref target='{$url}'>{$url}</ref>
+        return if ($node/name()='match') then $ref else $node/text()
+    return 
+    <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a-text-linked}</note>
+(: checks existing doc to compare editing history, etc. :)
+let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
+let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
+(: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
                     let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
-                    let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
-                                        <http:header name="Connection" value="close"/>
-                                      </http:request>)
+                    let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
                     return 
                         if($children[1]/@status = '200') then 
                                     let $notes := parse-json(util:binary-to-string($children[2]))
@@ -299,7 +341,31 @@ let $getNotes :=
                                         else ()
                              else()
                 else ()
-return     
+                
+let $citation := 
+    let $html-citation := $rec?bib
+    let $html-no-breaks := replace($html-citation,'\\n\s*','')
+    let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
+    let $html-i-analyze := 
+        analyze-string($html-no-breaks,$html-i-regex)
+    let $tei-i := 
+        for $text in $html-i-analyze/*
+        return 
+            let $title-level := 
+                if ($text/descendant::fn:group/@nr=2) then 'a'
+                else 'm'
+            return
+                if ($text/name()='non-match') then $text/text()
+                else element title {attribute level {$title-level},$text/fn:group[@nr=4]/text()}
+    let $tei-citation := 
+        for $text in $tei-i
+        let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
+        return 
+            if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
+    return 
+    element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
+
+return
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
             <fileDesc>
@@ -320,11 +386,23 @@ return
                     let $name := if($e?name[. != '']) then $e?name else $e?username
                     return
                         <editor role="creator" ref="{$uri}">{$name}</editor>,
-                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    for $e in $existing-zotero-editors[name/@ref != $rec?meta?lastModifiedByUser?links?*?href]
+                    let $uri := $existing-zotero-editors/name/@ref
+                    let $name := $existing-zotero-editors/name/text()
+                    return 
+                        <editor role="creator" ref="{$uri}">{$name}</editor>,
+                    (: Replacing "Assigned: " with "Edited: " but with no username. 
+                    Will duplicate editor if name is listed differently in Zotero. :)
+                    (:for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
                     let $assigned := substring-after($e, 'Assigned: ')
                     where $assigned != $rec?meta?createdByUser?username
                     return
-                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,
+                        <editor role="creator" ref="https://www.zotero.org/{$assigned}">{$assigned}</editor>,:)
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Edited:')]
+                    let $edited := substring-after($e, 'Edited: ')
+                    where $edited != ($rec?meta?createdByUser?name,$rec?meta?lastModifiedByUser?name)
+                    return
+                        <editor role="creator">{$edited}</editor>,
                     (: respStmt :)
                     for $e in $rec?meta?createdByUser
                     let $uri := $e?links?*?href
@@ -336,11 +414,19 @@ return
                     let $name := if($e?name[. != '']) then $e?name else $e?username
                     return
                         <respStmt><resp>Record edited in Zotero by</resp><name ref="{$uri}">{$name}</name></respStmt>,
-                    for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
+                    for $e in $existing-zotero-editors[name/@ref != $rec?meta?lastModifiedByUser?links?*?href]
+                    return 
+                        $existing-zotero-editors,                    
+                    (: Replacing "Assigned: " with "Edited: " but with no username :)
+                    (:for $e in $rec?data?tags?*?tag[starts-with(.,'Assigned:')]
                     let $assigned := substring-after($e, 'Assigned: ')
                     where $assigned != $rec?meta?createdByUser?username
                     return 
-                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>
+                        <respStmt><resp>Primary editing by</resp><name ref="https://www.zotero.org/{$assigned}">{$assigned}</name></respStmt>:)
+                    for $e in $rec?data?tags?*?tag[starts-with(.,'Edited:')]
+                    let $edited := substring-after($e, 'Edited: ')
+                    return 
+                        <respStmt><resp>Primary editing by</resp><name>{$edited}</name></respStmt>
                     )}</titleStmt>
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
@@ -366,6 +452,7 @@ return
                   {$citedRange}
                   {$getNotes}
                 </biblStruct>
+                {$citation}
                 {$list-relations}
             </body>
         </text>
@@ -377,3 +464,4 @@ declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:st
         zotero2tei:build-new-record-json($rec, $local-id)
     else zotero2tei:build-new-record($rec, $local-id)
 };
+
