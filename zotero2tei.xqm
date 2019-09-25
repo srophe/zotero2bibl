@@ -214,6 +214,9 @@ let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
+(: DOI :)
+let $doi-uri := for $doi in $rec?data?DOI[. != '']
+                return <idno type="DOI">{$doi}</idno>
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
 let $zotero-idno := <idno type="URI">{$rec?links?alternate?href}</idno>  
 (:  Equals the biblStruct/@corresp URI to idno with @type='URI' :)
@@ -229,7 +232,7 @@ let $worldcat-uri :=
                     return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)                       
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs,$doi-uri)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang := if($rec?data?language) then
                 element textLang { 
@@ -313,8 +316,15 @@ let $tei-series := if($series-titles and $recordType = "monograph") then
 let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 (:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
-let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
-    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
+let $abstract :=   
+    for $a in $rec?data?abstractNote[. != ""]
+    let $a-link-regex := 
+        concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}',
+                    string-join( 
+                        for $altid in $zotero2tei:zotero-config//*:altgroupid
+                        return concat('\{https://www.zotero.org/groups/',$altid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}'),'|'
+                    )
+                )
     let $a-link-replace := $zotero2tei:zotero-config//*:base-uri/text()
     let $a-text-linked := 
         for $node in analyze-string($a,$a-link-regex)/*
@@ -344,7 +354,7 @@ let $getNotes :=
                 
 let $citation := 
     let $html-citation := $rec?bib
-    let $html-no-breaks := replace($html-citation,'\\n\s*','')
+    let $html-no-breaks := replace(replace($html-citation,'\\n\s*',''),'https?://\S+','')
     let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
     let $html-i-analyze := 
         analyze-string($html-no-breaks,$html-i-regex)
