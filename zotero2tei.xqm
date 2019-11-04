@@ -244,7 +244,10 @@ let $lang := if($rec?data?language) then
              else ()             
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
-                return element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
+                return 
+                    if($creators?firstName) then
+                        element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
+                    else element {$creators?creatorType} {element name {$creators?name}} 
 (: creating imprint, any additional data required here? :)
 let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
                     if ($rec?data?place) then (<pubPlace>{$rec?data?place}</pubPlace>) else (),
