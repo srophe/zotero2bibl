@@ -220,16 +220,27 @@ let $zotero-idno := <idno type="URI">{$rec?links?alternate?href}</idno>
 let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zotero.org','www.zotero.org')}</idno>
 (:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
-(:  Not sure here if extra is always the worldcat-ID and if so, if or how more than one ID are structured, however: converted to worldcat-URI :)
+(:  Not sure here if extra is always the worldcat-ID and if so, 
+if or how more than one ID are structured, however: converted to worldcat-URI :)
+let $extra := 
+                for $extra in tokenize($rec?data?extra,'\n')
+                return 
+                    if(matches($extra,'^OCLC:\s*')) then 
+                        <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
+                    else if(matches($extra,'^([\d]\s*)')) then 
+                        <idno type="URI">{"http://www.worldcat.org/oclc/" || $extra}</idno>
+                    else ()
+(:  @depreciated, use $extra to parse out all the key:value pairs in the extra field. Currently only processing the OCLC number                  
 let $worldcat-uri := 
                     (
                     for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
                     return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
                     for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
-                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)                       
+                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)        
+:)                    
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$worldcat-uri,$refs)
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$extra,$refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang := if($rec?data?language) then
                 element textLang { 
@@ -345,7 +356,7 @@ let $getNotes :=
                              else()
                 else ()
                 
-let $citation := 
+let $bibl := 
     let $html-citation := $rec?bib
     let $html-no-breaks := replace($html-citation,'\\n\s*','')
     let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
@@ -365,9 +376,37 @@ let $citation :=
         let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
         return 
             if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
+    return element bibl {attribute type {'formatted'}, attribute subtype {'bibliography'}, attribute resp {'https://www.zotero.org/styles/chicago-note-bibliography-17th-edition'}, $tei-citation}
+let $coins := 
+    let $get-coins := $rec?coins
+    let $target := substring-before(substring-after($get-coins,"title='"),"'")
     return 
-    element bibl {attribute type {'formatted'}, attribute subtype {'https://www.zotero.org/styles/chicago-note-bibliography-16th-edition'}, $tei-citation}
-
+        if($get-coins != '') then 
+          element bibl {attribute type {'formatted'}, attribute subtype {'coins'},attribute resp {'https://www.zotero.org/styles/chicago-note-bibliography-17th-edition'}, 
+               element ptr {attribute target {$target}}
+          }  
+        else ()
+let $citation := 
+    let $html-citation := $rec?citation
+    let $html-no-breaks := replace($html-citation,'\\n\s*','')
+    let $html-i-regex := '((&#x201C;)|(&lt;i&gt;))(.+?)((&#x201D;)|(&lt;/i&gt;))'
+    let $html-i-analyze := 
+        analyze-string($html-no-breaks,$html-i-regex)
+    let $tei-i := 
+        for $text in $html-i-analyze/*
+        return 
+            let $title-level := 
+                if ($text/descendant::fn:group/@nr=2) then 'a'
+                else 'm'
+            return
+                if ($text/name()='non-match') then $text/text()
+                else element title {attribute level {$title-level},$text/fn:group[@nr=4]/text()}
+    let $tei-citation := 
+        for $text in $tei-i
+        let $no-tags := parse-xml-fragment(replace($text,'&lt;.+?&gt;',''))
+        return 
+            if ($text/node()) then element {$text/name()} {$text/@*, $no-tags} else $no-tags
+    return element bibl {attribute type {'formatted'}, attribute subtype {'citation'},attribute resp {'https://www.zotero.org/styles/chicago-note-bibliography-17th-edition'}, $tei-citation}        
 return
     <TEI xmlns="http://www.tei-c.org/ns/1.0">
         <teiHeader>
@@ -455,6 +494,8 @@ return
                   {$citedRange}
                   {$getNotes}
                 </biblStruct>
+                {$bibl}
+                {$coins}
                 {$citation}
                 {$list-relations}
             </body>
