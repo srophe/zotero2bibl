@@ -199,6 +199,9 @@ let $analytic-title := for $t in $rec?data?title
                              if($recordType = 'analytic') then attribute level { "a" }
                              else if($recordType = 'monograph') then attribute level { "m" } 
                              else (), $t}
+let $bookTitle :=        for $title in $rec?data?bookTitle[. != ''] 
+                         return 
+                            element { xs:QName("title") } {attribute level { "m" }, $title}
 let $series-titles :=  (for $series in $rec?data?series[. != ''] 
                         return 
                             element { xs:QName("title") } {
@@ -206,9 +209,7 @@ let $series-titles :=  (for $series in $rec?data?series[. != '']
                             else (), $series},
                         for $series in $rec?data?seriesTitle[. != ''] 
                         return 
-                            element { xs:QName("title") } {
-                            if($recordType = 'monograph') then attribute level { "s" }
-                            else (), $series})
+                            element { xs:QName("title") } {attribute level { "s" }, $series})
 let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
                         return <title level="j">{$journal}</title>                        
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
@@ -299,18 +300,22 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                             ) else ()
                     }</listRelation>)
 (: Not sure if that is sufficient for an analytic check? following the TEI-guideline and the other script @github... :)
-let $tei-analytic := if($recordType = 'analytic') then
+let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" or $recordType = "chapter") then
                          <analytic>{
-                             $creator,
-                             $analytic-title,
-                             $all-idnos
+                            if($itemType = "bookSection" or $itemType = "chapter") then $creator[self::tei:author]
+                            else $creator,
+                            $analytic-title,
+                            $all-idnos
                          }</analytic>
                          else ()
-let $tei-monogr := if ($recordType = "analytic" or $recordType = "monograph") then
+let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") then
                     <monogr>{
-                        if($recordType = "analytic") then ()
+                        if($itemType = "bookSection" or $itemType = "chapter") then
+                            $creator[self::tei:editor]
+                        else if($recordType = "analytic") then ()
                         else $creator,
                         if($recordType = "monograph") then $analytic-title
+                        else if($itemType = "bookSection" or $itemType = "chapter") then $bookTitle
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
                         if($lang) then ($lang) else (),
@@ -319,10 +324,15 @@ let $tei-monogr := if ($recordType = "analytic" or $recordType = "monograph") th
                         return <biblScope unit="pp">{$p}</biblScope>,
                         for $vol in $rec?data?volume[. != '']
                         return <biblScope unit="vol">{$vol}</biblScope>
-                    }</monogr> else ()
+                    }</monogr>
+                     else ()
 (: I haven't found an example file with series information to find the JSON equivalence to the tei structure, so have to continue on that :)
-let $tei-series := if($series-titles and $recordType = "monograph") then 
-                        <series>{$series-titles}</series>
+let $tei-series := if($series-titles) then 
+                        <series>
+                        {$series-titles}
+                        {for $vol in $rec?data?seriesNumber[. != '']
+                        return <biblScope>{$vol}</biblScope>}
+                        </series>
                     else()                        
 let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
