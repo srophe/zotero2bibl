@@ -28,7 +28,8 @@ declare namespace functx = "http://www.functx.com";
 (: Access zotero-api configuration file :) 
 declare variable $zotero2tei:zotero-api := 'https://api.zotero.org';
 declare variable $zotero2tei:zotero-config := doc('zotero-config.xml');
-
+declare variable $zotero2tei:base-uri := $zotero2tei:zotero-config//*:base-uri/text();
+declare variable $zotero2tei:groupid := $zotero2tei:zotero-config//*:groupid/text();
 (:~ 
  : Simple typeswitch to transform specific Zotero elements into to Syriaca.org TEI elements
  : @param $node 
@@ -267,9 +268,10 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
                     if ($rec?data?date) then (<date>{$rec?data?date}</date>) else ()
                 }</imprint>)
 (: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
-let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
+let $list-relations := if (empty($rec?data?tags) or empty($rec?data?relations)) then () else (<listRelation>{(
                         for $tag in $rec?data?tags?*?tag
-                            return if (matches($tag,'^\s*(MS|Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
+                        return 
+                            if (matches($tag,'^\s*(MS|Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
                                 element relation {
                                     attribute active {$local-uri},
                                     if (matches($tag,'^\s*(Subject|Part|Section|Book|Provenance|Source|Translator):\s*')) then (
@@ -297,8 +299,18 @@ let $list-relations := if (empty($rec?data?tags)) then () else (<listRelation>{
                                         }
                                     ) else ()
                                 }
-                            ) else ()
-                    }</listRelation>)
+                            ) else (),
+                        let $relations := $rec?data?relations
+                        let $rec := $local-uri
+                        let $zotero-url := concat('http://zotero.org/groups/',$zotero2tei:groupid,'/items')
+                        let $related := string-join(data($relations?*),' ')
+                        let $all := normalize-space(concat($local-uri,' ', replace($related,$zotero-url,$zotero2tei:base-uri)))
+                        return  
+                            element relation {
+                                attribute name {'dc:relation'},
+                                attribute mutual {$all}
+                            }
+                    )}</listRelation>)
 (: Not sure if that is sufficient for an analytic check? following the TEI-guideline and the other script @github... :)
 let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" or $recordType = "chapter") then
                          <analytic>{
