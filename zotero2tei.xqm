@@ -305,6 +305,7 @@ let $list-relations := if (empty($rec?data?tags) or empty($rec?data?relations)) 
                         let $zotero-url := concat('http://zotero.org/groups/',$zotero2tei:groupid,'/items')
                         let $related := string-join(data($relations?*),' ')
                         let $all := normalize-space(concat($local-uri,' ', replace($related,$zotero-url,$zotero2tei:base-uri)))
+                        where $related != '' and $related != ' '
                         return  
                             element relation {
                                 attribute name {'dc:relation'},
