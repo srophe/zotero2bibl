@@ -224,11 +224,17 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, 
 if or how more than one ID are structured, however: converted to worldcat-URI :)
-let $extra := 
+let $oclcId := 
                 for $extra in tokenize($rec?data?extra,'\n')
                 return 
                     if(matches($extra,'^OCLC:\s*')) then 
                         <idno type="URI" subtype="OCLC">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
+                    else ()
+let $extra := 
+                for $extra in tokenize($rec?data?extra,'\n')
+                return 
+                    if(matches($extra,'^OCLC:\s*')) then 
+                        ()
                     else if(matches($extra,'^CTS-URN:\s*')) then 
                         (<idno type="CTS-URN">{normalize-space(substring-after($extra,'CTS-URN: '))}</idno>(:,
                          <ref type="URL" target="{concat("https://scaife.perseus.org/library/",normalize-space(substring-after($extra,'CTS-URN: ')))}"/>:)
@@ -320,7 +326,8 @@ let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" 
                             if($itemType = "bookSection" or $itemType = "chapter") then $creator[self::tei:author]
                             else $creator,
                             $analytic-title,
-                            $all-idnos
+                            $all-idnos,
+                            if($recordType = "bookSection") then () else ($oclcId)
                          }</analytic>
                          else ()
 let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") then
@@ -333,6 +340,7 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         else if($itemType = "bookSection" or $itemType = "chapter") then $bookTitle
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
+                        if($recordType = "bookSection") then ($oclcId) else (),
                         if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
                         for $p in $rec?data?pages[. != '']
