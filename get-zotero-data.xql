@@ -111,7 +111,7 @@ declare function local:process-results($results as item()*){
                 return local:process-records($rec, $format)
             else 
                 for $rec at $p in $results//tei:biblStruct
-                return local:process-records($rec, $format)
+                return $rec(:local:process-records($rec, $format):)
 (:        else if($headers/@name="Backoff") then:)
 (:            (<message status="{$headers/@status}">{string($headers/@message)}</message>,:)
 (:                let $wait := util:wait(xs:integer($headers[@name="Backoff"][@value])):)
@@ -132,11 +132,14 @@ declare function local:process-results($results as item()*){
  : @param $last-modified-version
 :)
 declare function local:get-zotero-data($url){ 
+http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
+(:
     if(request:get-parameter('action', '') = 'initiate') then 
             http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
     else http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get">
                              <http:header name="If-Modified-Since-Version" value="{$last-modified-version}"/>
                            </http:request>)
+:)                           
 };
 
 (:~
@@ -144,8 +147,9 @@ declare function local:get-zotero-data($url){
 :)
 declare function local:get-zotero(){
     let $start := if(request:get-parameter('start', '') != '') then concat('&amp;start=',request:get-parameter('start', '')) else '&amp;start=0'
-    let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=100'
-    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,if($format='json') then '&amp;include=bib,data,coins,citation&amp;style=chicago-fullnote-bibliography' else(),$start, $limit)
+    let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=10'
+    let $since := if(request:get-parameter('action', '') != 'initiate') then concat('&amp;since=',$last-modified-version) else ()
+    let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,if($format='json') then '&amp;include=bib,data,coins,citation&amp;style=chicago-fullnote-bibliography' else(),$start, $limit, $since)
     let $items := local:get-zotero-data($url)
     let $items-info := $items[1]
     let $total := $items-info/http:header[@name='total-results']/@value
@@ -167,20 +171,20 @@ declare function local:get-zotero(){
                 }
              </div>
         else if($items-info/@status = '200') then
-          <div xmlns="http://www.w3.org/1999/xhtml" id="response">{
-           let $results := 
-                (local:process-results($items),
-                local:update-version($version))
-            return 
-            (if(request:get-parameter('debug', '') = 'true') then $results else (),
-            if($next-url) then
-                <div xmlns="http://www.w3.org/1999/xhtml">
-                    <p>Processed 0 - {string($new-start)} of {string($total)}</p>
-                    <p><a href="get-zotero-data.xql?action=initiate&amp;start={$new-start}" class="btn btn-info zotero">Next</a></p>
-                </div>
-            else 'Done!')
-           }</div>
-        else <message status="{$items-info/@status}">{string($items-info/@message)} {$url}</message>      
+            <div xmlns="http://www.w3.org/1999/xhtml" id="response">{
+             let $results := 
+                  (local:process-results($items),
+                  local:update-version($version))
+              return 
+              (if(request:get-parameter('debug', '') = 'true') then $results else (),
+              if($next-url) then
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                      <p>Processed 0 - {string($new-start)} of {string($total)}</p>
+                      <p><a href="get-zotero-data.xql?action=initiate&amp;start={$new-start}" class="btn btn-info zotero">Next</a></p>
+                  </div>
+              else 'Done!')
+             }</div>
+        else <message status="{$items-info/@status}">{string($items-info/@message)} {$url}</message>   
 };
 
 (: Helper function to recursively create a collection hierarchy. :)
@@ -204,9 +208,13 @@ declare function local:mkcol($collection, $path) {
  : If $action is not empty, check for specified collection, create if it does not exist. 
  : Run Zotero request. 
 :)
-if(request:get-parameter('action', '') != '') then
+if(request:get-parameter('action', '') = 'update') then
     if(xmldb:collection-available($data-dir)) then
         local:get-zotero()
+    else (local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
+else if(request:get-parameter('action', '') = 'initiate') then 
+    if(xmldb:collection-available($data-dir)) then
+        (xmldb:remove($data-dir),local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
     else (local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
 else 
     <div xmlns="http://www.w3.org/1999/xhtml">
