@@ -147,8 +147,9 @@ http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" meth
 :)
 declare function local:get-zotero(){
     let $start := if(request:get-parameter('start', '') != '') then concat('&amp;start=',request:get-parameter('start', '')) else '&amp;start=0'
-    let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=10'
-    let $since := if(request:get-parameter('action', '') != 'initiate') then concat('&amp;since=',$last-modified-version) else ()
+    let $limit := if(request:get-parameter('limit', '') != '') then concat('&amp;limit=',request:get-parameter('limit', '')) else '&amp;limit=50'
+    let $action := if(request:get-parameter('action', '') != '') then request:get-parameter('action', '') else 'check'
+    let $since := if($action = 'update') then concat('&amp;since=',$last-modified-version) else ()
     let $url := if(request:get-parameter('next', '') != '') then request:get-parameter('next', '') else concat($zotero-api,'/groups/',$groupid,'/items?format=',$format,if($format='json') then '&amp;include=bib,data,coins,citation&amp;style=chicago-fullnote-bibliography' else(),$start, $limit, $since)
     let $items := local:get-zotero-data($url)
     let $items-info := $items[1]
@@ -171,20 +172,28 @@ declare function local:get-zotero(){
                 }
              </div>
         else if($items-info/@status = '200') then
-            <div xmlns="http://www.w3.org/1999/xhtml" id="response">{
+            <div xmlns="http://www.w3.org/1999/xhtml" id="response">
+            {
              let $results := 
                   (local:process-results($items),
-                  local:update-version($version))
+                  if($next-url) then () else local:update-version($version))
               return 
               (if(request:get-parameter('debug', '') = 'true') then $results else (),
               if($next-url) then
                   <div xmlns="http://www.w3.org/1999/xhtml">
-                      <p>Processed 0 - {string($new-start)} of {string($total)}</p>
-                      <p><a href="get-zotero-data.xql?action=initiate&amp;start={$new-start}" class="btn btn-info zotero">Next</a></p>
+                      <p>Processed {if(request:get-parameter('start', '') != '') then request:get-parameter('start', '') else '0'} - {substring-before($new-start,'&amp;')} of {string($total)}</p>
+                      <p><a href="get-zotero-data.xql?action={$action}&amp;start={$new-start}{$since}" class="btn btn-info zotero">Next</a></p>
                   </div>
-              else 'Done!')
+              else 
+                if($items-info/@message="Not Modified") then 
+                    <p><label>Updates : </label> No updates available.</p>
+                else 
+                    <div><h3>Updated</h3>
+                      <p><label>Last Modified Version (Zotero): </label> {string($version)}</p>
+                      <p><label>Number of updated records: </label> {string($total)}</p>
+                      </div>)
              }</div>
-        else <message status="{$items-info/@status}">{string($items-info/@message)} {$url}</message>   
+        else <message status="{$items-info/@status}">{string($items-info/@message)} {$url}</message> 
 };
 
 (: Helper function to recursively create a collection hierarchy. :)
@@ -213,7 +222,11 @@ if(request:get-parameter('action', '') = 'update') then
         local:get-zotero()
     else (local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
 else if(request:get-parameter('action', '') = 'initiate') then 
-    if(xmldb:collection-available($data-dir)) then
+    if(request:get-parameter('start', '') != '' and xmldb:collection-available($data-dir)) then 
+        local:get-zotero()
+    else if((request:get-parameter('start', '') = '0' or  request:get-parameter('start', '') = '1') and xmldb:collection-available($data-dir)) then 
+        local:get-zotero()        
+    else if(xmldb:collection-available($data-dir)) then
         (xmldb:remove($data-dir),local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
     else (local:mkcol("/db/apps", replace($data-dir,'/db/apps','')),local:get-zotero())
 else 

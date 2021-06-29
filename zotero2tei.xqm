@@ -212,7 +212,28 @@ let $series-titles :=  (for $series in $rec?data?series[. != '']
                         return 
                             element { xs:QName("title") } {attribute level { "s" }, $series})
 let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
-                        return <title level="j">{$journal}</title>                        
+                        return <title level="j">{$journal}</title> 
+let $extra-titles :=  for $extraTitle in tokenize($rec?data?extra,'\n')
+                      return 
+                         if(matches($extraTitle,'^Book pinyinLC:')) then
+                            element { xs:QName("title") } {
+                            attribute level { "m" }, attribute lang { "pinyinLC" }, substring-after($extraTitle,': ')}
+                         else if(matches($extraTitle,'^Book pinyinCP:')) then
+                            element { xs:QName("title") } {
+                            attribute level { "m" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
+                         else if(matches($extraTitle,'^Title pinyinLC:')) then
+                            element { xs:QName("title") } {
+                            attribute level { "m" }, attribute lang { "pinyinLC" }, substring-after($extraTitle,': ')}
+                        else if(matches($extraTitle,'^Title pinyinCP:')) then
+                            element { xs:QName("title") } {
+                            attribute level { "m" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
+                        else if(matches($extraTitle,'^Journal pinyinLC::')) then
+                            element { xs:QName("title") } {
+                            attribute level { "j" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
+                        else if(matches($extraTitle,'^Journal pinyinLC::')) then
+                            element { xs:QName("title") } {
+                            attribute level { "j" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')} 
+                         else ()
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
@@ -261,6 +282,13 @@ let $creator := for $creators in $rec?data?creators?*
                     if($creators?firstName) then
                         element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
                     else element {$creators?creatorType} {element name {$creators?name}} 
+let $extra-authors := for $extraAuthors in tokenize($rec?data?extra,'\n')
+                      return 
+                         if(matches($extraAuthors,'^Author pinyin forename1:')) then
+                           element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname1:')],': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin forename2:')) then
+                           element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname2:')],': ')}}
+                         else ()                         
 (: creating imprint, any additional data required here? :)
 let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
                     if ($rec?data?place) then (<pubPlace>{$rec?data?place}</pubPlace>) else (),
@@ -317,7 +345,9 @@ let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" 
                          <analytic>{
                             if($itemType = "bookSection" or $itemType = "chapter") then $creator[self::tei:author]
                             else $creator,
+                            $extra-authors,
                             $analytic-title,
+                            $extra-titles,
                             $all-idnos
                          }</analytic>
                          else ()
@@ -327,9 +357,11 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                             $creator[self::tei:editor]
                         else if($recordType = "analytic") then ()
                         else $creator,
+                        $extra-authors,
                         if($recordType = "monograph") then $analytic-title
                         else if($itemType = "bookSection" or $itemType = "chapter") then $bookTitle
                         else ($series-titles,$journal-titles),
+                        $extra-titles,
                         if ($tei-analytic) then () else ($all-idnos),
                         if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
