@@ -245,30 +245,22 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, 
 if or how more than one ID are structured, however: converted to worldcat-URI :)
-let $oclcId := 
-                for $extra in tokenize($rec?data?extra,'\n')
-                return 
-                    if(matches($extra,'^OCLC:\s*')) then 
-                        <idno type="URI" subtype="OCLC">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
-                    else ()
 let $extra := 
                 for $extra in tokenize($rec?data?extra,'\n')
                 return 
                     if(matches($extra,'^OCLC:\s*')) then 
-                        ()
-                    else if(matches($extra,'^CTS-URN:\s*')) then 
-                        (<idno type="CTS-URN">{normalize-space(substring-after($extra,'CTS-URN: '))}</idno>(:,
-                         <ref type="URL" target="{concat("https://scaife.perseus.org/library/",normalize-space(substring-after($extra,'CTS-URN: ')))}"/>:)
-                        )
-                    else if(matches($extra,'^xmlFile:\s*')) then 
-                        <ref type="URL" subtype="xmlFile" target="{normalize-space(substring-after($extra,'xmlFile: '))}"/>                        
-                    else if(matches($extra,'^DOI:\s*')) then
-                        let $doi := normalize-space(substring-after($extra,'DOI: '))
-                        let $doiLink := if(starts-with($doi,'http')) then $doi else concat('http://dx.doi.org/',$doi)
-                        return <idno type="URI" subtype="DOI">{$doiLink}</idno>
+                        <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
                     else if(matches($extra,'^([\d]\s*)')) then 
                         <idno type="URI">{"http://www.worldcat.org/oclc/" || $extra}</idno>
-                    else ()                    
+                    else ()
+(:  @depreciated, use $extra to parse out all the key:value pairs in the extra field. Currently only processing the OCLC number                  
+let $worldcat-uri := 
+                    (
+                    for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
+                    return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
+                    for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)        
+:)                    
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$extra,$refs)
@@ -355,6 +347,7 @@ let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" 
                             else $creator,
                             $extra-authors,
                             $analytic-title,
+                            $extra-titles,
                             $all-idnos
                          }</analytic>
                          else ()
@@ -370,7 +363,6 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         else ($series-titles,$journal-titles),
                         $extra-titles,
                         if ($tei-analytic) then () else ($all-idnos),
-                        if($recordType = "bookSection") then ($oclcId) else (),
                         if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
                         for $p in $rec?data?pages[. != '']
