@@ -194,15 +194,39 @@ let $recordType :=
     else if($itemType = ('journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
 (: Main titles from zotero record:)
-let $analytic-title := for $t in $rec?data?title
+let $analytic-title := (for $t in $rec?data?title
                        return 
                             element { xs:QName("title") } {
                              if($recordType = 'analytic') then attribute level { "a" }
                              else if($recordType = 'monograph') then attribute level { "m" } 
-                             else (), $t}
-let $bookTitle :=        for $title in $rec?data?bookTitle[. != ''] 
+                             else (), $t},
+                        for $extraTitle in tokenize($rec?data?extra,'\n')
+                        let $title := substring-after($extraTitle,': ')
+                        let $level := 
+                                if($recordType = 'analytic') then  "a" 
+                                else 'm'
+                        return 
+                            if(matches($extraTitle,'^Title pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinLC" }, $title}
+                            else if(matches($extraTitle,'^Title pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinCP" }, $title}    
+                            else ()    )
+let $bookTitle :=        (for $title in $rec?data?bookTitle[. != ''] 
+                          return 
+                            element { xs:QName("title") } {attribute level { "m" }, $title},
+                         for $extraTitle in tokenize($rec?data?extra,'\n')
+                         let $title := substring-after($extraTitle,': ')
+                         let $level :=  'm'
                          return 
-                            element { xs:QName("title") } {attribute level { "m" }, $title}
+                            if(matches($extraTitle,'^Pub pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinLC" }, $title}
+                            else if(matches($extraTitle,'^Pub pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinCP" }, $title}    
+                            else ()    )   
 let $series-titles :=  (for $series in $rec?data?series[. != ''] 
                         return 
                             element { xs:QName("title") } {
@@ -211,29 +235,19 @@ let $series-titles :=  (for $series in $rec?data?series[. != '']
                         for $series in $rec?data?seriesTitle[. != ''] 
                         return 
                             element { xs:QName("title") } {attribute level { "s" }, $series})
-let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
-                        return <title level="j">{$journal}</title> 
-let $extra-titles :=  for $extraTitle in tokenize($rec?data?extra,'\n')
-                      return 
-                         if(matches($extraTitle,'^Book pinyinLC:')) then
-                            element { xs:QName("title") } {
-                            attribute level { "m" }, attribute lang { "pinyinLC" }, substring-after($extraTitle,': ')}
-                         else if(matches($extraTitle,'^Book pinyinCP:')) then
-                            element { xs:QName("title") } {
-                            attribute level { "m" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
-                         else if(matches($extraTitle,'^Title pinyinLC:')) then
-                            element { xs:QName("title") } {
-                            attribute level { "m" }, attribute lang { "pinyinLC" }, substring-after($extraTitle,': ')}
-                        else if(matches($extraTitle,'^Title pinyinCP:')) then
-                            element { xs:QName("title") } {
-                            attribute level { "m" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
-                        else if(matches($extraTitle,'^Journal pinyinLC::')) then
-                            element { xs:QName("title") } {
-                            attribute level { "j" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')}
-                        else if(matches($extraTitle,'^Journal pinyinLC::')) then
-                            element { xs:QName("title") } {
-                            attribute level { "j" }, attribute lang { "pinyinCP" }, substring-after($extraTitle,': ')} 
-                         else ()
+let $journal-titles :=  (for $journal in $rec?data?publicationTitle[. != '']
+                        return <title level="j">{$journal}</title>,
+                        for $extraTitle in tokenize($rec?data?extra,'\n')
+                         let $title := substring-after($extraTitle,': ')
+                         let $level :=  'j'
+                         return 
+                            if(matches($extraTitle,'^Pub pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinLC" }, $title}
+                            else if(matches($extraTitle,'^Pub pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute lang { "pinyinCP" }, $title}    
+                            else ()    )
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
@@ -347,7 +361,6 @@ let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" 
                             else $creator,
                             $extra-authors,
                             $analytic-title,
-                            $extra-titles,
                             $all-idnos
                          }</analytic>
                          else ()
@@ -361,7 +374,6 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         if($recordType = "monograph") then $analytic-title
                         else if($itemType = "bookSection" or $itemType = "chapter") then $bookTitle
                         else ($series-titles,$journal-titles),
-                        $extra-titles,
                         if ($tei-analytic) then () else ($all-idnos),
                         if($lang) then ($lang) else (),
                         if ($imprint) then ($imprint) else (),
