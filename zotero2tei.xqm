@@ -302,6 +302,16 @@ let $extra-authors := for $extraAuthors in tokenize($rec?data?extra,'\n')
                            element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname1:')],': ')}}
                          else if(matches($extraAuthors,'^Author pinyin forename2:')) then
                            element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname2:')],': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin forename:')) then
+                           element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname:')],': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin forename3:')) then
+                           element {xs:QName("author")} {attribute lang { "pinyin" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname3:')],': ')}}                           
+                        else if(matches($extraAuthors,'^Author surname zh-Hans:')) then
+                           element {xs:QName("author")} {attribute lang { "zh-Hans" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans:')],': ')}}                           
+                        else if(matches($extraAuthors,'^Author surname zh-Hans1:')) then
+                           element {xs:QName("author")} {attribute lang { "zh-Hans" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans1:')],': ')}}                           
+                        else if(matches($extraAuthors,'^Author surname zh-Hans2:')) then
+                           element {xs:QName("author")} {attribute lang { "zh-Hans" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans2:')],': ')}}                           
                          else ()                         
 (: creating imprint, any additional data required here? :)
 let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
