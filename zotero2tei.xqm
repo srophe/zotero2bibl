@@ -302,27 +302,76 @@ let $lang := if($rec?data?language) then
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return 
-                    if($creators?firstName) then
+                    if($creators?firstName[. != '']) then
                         element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
+                    else if($creators?lastName[. != ''] ) then
+                        element {$creators?creatorType} {element surname{$creators?lastName}}                        
                     else element {$creators?creatorType} {element name {$creators?name}} 
 let $extra-authors := for $extraAuthors in tokenize($rec?data?extra,'\n')
                       return 
-                         if(matches($extraAuthors,'^Author pinyin forename:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname:')],': ')}}
-                         else if(matches($extraAuthors,'^Author pinyin forename1:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname1:')],': ')}}
-                         else if(matches($extraAuthors,'^Author pinyin forename2:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname2:')],': ')}}
-                         else if(matches($extraAuthors,'^Author pinyin forename3:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin surname3:')],': ')}}                           
+                         if(matches($extraAuthors,'^Author pinyin surname:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname1:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename1:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname2:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename2:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname3:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename3:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
+                        
                         else if(matches($extraAuthors,'^Author forename zh-Hans:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans:')],': ')}}                           
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
                         else if(matches($extraAuthors,'^Author forename zh-Hans1:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans1:')],': ')}}                           
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename1:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
                         else if(matches($extraAuthors,'^Author forename zh-Hans2:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans2:')],': ')}}
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename2:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
                         else if(matches($extraAuthors,'^Author forename zh-Hans3:')) then
-                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after($extraAuthors,': ')}, element surname{substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author surname zh-Hans3:')],': ')}}                           
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename3:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor pinyin surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor pinyin surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor pinyin surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor pinyin surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hans:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                               
+                        else if(matches($extraAuthors,'^Editor zh-Hans2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}    
+                        else if(matches($extraAuthors,'^Editor zh-Hans3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}    
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hant:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hant3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}
+                           
                          else ()                         
 (: creating imprint, any additional data required here? :)
 let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
