@@ -191,18 +191,48 @@ let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-ur
 let $itemType := $rec?data?itemType
 let $recordType := 	
     if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
-    else if($itemType = ('journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
+    else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
 (: Main titles from zotero record:)
-let $analytic-title := for $t in $rec?data?title
+let $analytic-title := (for $t in $rec?data?title
                        return 
                             element { xs:QName("title") } {
                              if($recordType = 'analytic') then attribute level { "a" }
                              else if($recordType = 'monograph') then attribute level { "m" } 
-                             else (), $t}
-let $bookTitle :=        for $title in $rec?data?bookTitle[. != ''] 
-                         return 
-                            element { xs:QName("title") } {attribute level { "m" }, $title}
+                             else (), $t},
+                        for $extraTitle in tokenize($rec?data?extra,'\n')
+                        let $title := substring-after($extraTitle,': ')
+                        let $level := 
+                                if($recordType = 'analytic') then  "a" 
+                                else 'm'
+                        return
+                            if(matches($extraTitle,'^Title pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinLC" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Title pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinCP" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Title zh-Hant:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "zh-Hant" },attribute type { "alt" }, $title}                                
+                            else ()    )
+let $bookTitle :=        (for $title in $rec?data?bookTitle[. != ''] 
+                          return 
+                            element { xs:QName("title") } {attribute level { "m" }, $title},
+                         for $extraTitle in tokenize($rec?data?extra,'\n')
+                         let $title := substring-after($extraTitle,': ')
+                         let $level :=  'm'
+                         return (:zh-Hant:)
+                            if(matches($extraTitle,'^Pub pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinLC" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Pub pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinCP" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Pub zh-Hant:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "zh-Hant" },attribute type { "alt" }, $title}                                
+                            else ()    )   
 let $series-titles :=  (for $series in $rec?data?series[. != ''] 
                         return 
                             element { xs:QName("title") } {
@@ -211,8 +241,22 @@ let $series-titles :=  (for $series in $rec?data?series[. != '']
                         for $series in $rec?data?seriesTitle[. != ''] 
                         return 
                             element { xs:QName("title") } {attribute level { "s" }, $series})
-let $journal-titles :=  for $journal in $rec?data?publicationTitle[. != '']
-                        return <title level="j">{$journal}</title>                        
+let $journal-titles :=  (for $journal in $rec?data?publicationTitle[. != '']
+                        return <title level="j">{$journal}</title>,
+                        for $extraTitle in tokenize($rec?data?extra,'\n')
+                         let $title := substring-after($extraTitle,': ')
+                         let $level :=  'j'
+                         return 
+                            if(matches($extraTitle,'^Pub pinyinLC:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinLC" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Pub pinyinCP:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "pinyinCP" },attribute type { "alt" }, $title}
+                            else if(matches($extraTitle,'^Pub zh-Hant:')) then
+                                element { xs:QName("title") } {
+                                attribute level { $level }, attribute xml:lang { "zh-Hant" },attribute type { "alt" }, $title}                                
+                            else ()    )
 let $titles-all := ($analytic-title,$series-titles,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
@@ -224,30 +268,22 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (:  Not sure here if extra is always the worldcat-ID and if so, 
 if or how more than one ID are structured, however: converted to worldcat-URI :)
-let $oclcId := 
-                for $extra in tokenize($rec?data?extra,'\n')
-                return 
-                    if(matches($extra,'^OCLC:\s*')) then 
-                        <idno type="URI" subtype="OCLC">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
-                    else ()
 let $extra := 
                 for $extra in tokenize($rec?data?extra,'\n')
                 return 
                     if(matches($extra,'^OCLC:\s*')) then 
-                        ()
-                    else if(matches($extra,'^CTS-URN:\s*')) then 
-                        (<idno type="CTS-URN">{normalize-space(substring-after($extra,'CTS-URN: '))}</idno>(:,
-                         <ref type="URL" target="{concat("https://scaife.perseus.org/library/",normalize-space(substring-after($extra,'CTS-URN: ')))}"/>:)
-                        )
-                    else if(matches($extra,'^xmlFile:\s*')) then 
-                        <ref type="URL" subtype="xmlFile" target="{normalize-space(substring-after($extra,'xmlFile: '))}"/>                        
-                    else if(matches($extra,'^DOI:\s*')) then
-                        let $doi := normalize-space(substring-after($extra,'DOI: '))
-                        let $doiLink := if(starts-with($doi,'http')) then $doi else concat('http://dx.doi.org/',$doi)
-                        return <idno type="URI" subtype="DOI">{$doiLink}</idno>
+                        <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
                     else if(matches($extra,'^([\d]\s*)')) then 
                         <idno type="URI">{"http://www.worldcat.org/oclc/" || $extra}</idno>
-                    else ()                    
+                    else ()
+(:  @depreciated, use $extra to parse out all the key:value pairs in the extra field. Currently only processing the OCLC number                  
+let $worldcat-uri := 
+                    (
+                    for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
+                    return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
+                    for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
+                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)        
+:)                    
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$extra,$refs)
@@ -266,9 +302,77 @@ let $lang := if($rec?data?language) then
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return 
-                    if($creators?firstName) then
+                    if($creators?firstName[. != '']) then
                         element {$creators?creatorType} {element forename {$creators?firstName}, element surname{$creators?lastName}}
+                    else if($creators?lastName[. != ''] ) then
+                        element {$creators?creatorType} {element surname{$creators?lastName}}                        
                     else element {$creators?creatorType} {element name {$creators?name}} 
+let $extra-authors := for $extraAuthors in tokenize($rec?data?extra,'\n')
+                      return 
+                         if(matches($extraAuthors,'^Author pinyin surname:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname1:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename1:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname2:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename2:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                         else if(matches($extraAuthors,'^Author pinyin surname3:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author pinyin forename3:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
+                        
+                        else if(matches($extraAuthors,'^Author forename zh-Hans:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Author forename zh-Hans1:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename1:')],': ')}, element surname{substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Author forename zh-Hans2:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename2:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Author forename zh-Hans3:')) then
+                           element {xs:QName("author")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Author zh-Hans forename3:')],': ')}, element surname{substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor pinyin surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor pinyin surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor pinyin surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor pinyin surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "pinyin" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hans surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor zh-Hans forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hans:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hans1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                               
+                        else if(matches($extraAuthors,'^Editor zh-Hans2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}    
+                        else if(matches($extraAuthors,'^Editor zh-Hans3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hans" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}    
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename1:')],': ')}, element surname {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename2:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hant surname3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element forename {substring-after(tokenize($rec?data?extra,'\n')[matches(.,'^Editor pinyin forename3:')],': ')}, element surname {substring-after($extraAuthors,': ')}}
+                        
+                        else if(matches($extraAuthors,'^Editor zh-Hant:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant1:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}                           
+                        else if(matches($extraAuthors,'^Editor zh-Hant2:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}
+                        else if(matches($extraAuthors,'^Editor zh-Hant3:')) then
+                           element {xs:QName("editor")} {attribute xml:lang { "zh-Hant" }, attribute role { "alt" }, element name {substring-after($extraAuthors,': ')}}
+                           
+                         else ()                         
 (: creating imprint, any additional data required here? :)
 let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and empty($rec?data?date)) then () else (<imprint>{
                     if ($rec?data?place) then (<pubPlace>{$rec?data?place}</pubPlace>) else (),
@@ -325,9 +429,9 @@ let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" 
                          <analytic>{
                             if($itemType = "bookSection" or $itemType = "chapter") then $creator[self::tei:author]
                             else $creator,
+                            $extra-authors,
                             $analytic-title,
-                            $all-idnos,
-                            if($recordType = "bookSection") then () else ($oclcId)
+                            $all-idnos
                          }</analytic>
                          else ()
 let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") then
@@ -335,18 +439,19 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         if($itemType = "bookSection" or $itemType = "chapter") then
                             $creator[self::tei:editor]
                         else if($recordType = "analytic") then ()
-                        else $creator,
+                        else ($creator,$extra-authors),
                         if($recordType = "monograph") then $analytic-title
                         else if($itemType = "bookSection" or $itemType = "chapter") then $bookTitle
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
-                        if($recordType = "bookSection") then ($oclcId) else (),
                         if($lang) then ($lang) else (),
+                        for $vol in $rec?data?volume[. != '']
+                        return <biblScope unit="vol">{$vol}</biblScope>,
+                        if($rec?data?numberOfVolumes[. != '']) then <extent>{$rec?data?numberOfVolumes}</extent> else(),
+                        if($rec?data?edition[. != '']) then <edition>{$rec?data?edition}</edition> else(),
                         if ($imprint) then ($imprint) else (),
                         for $p in $rec?data?pages[. != '']
-                        return <biblScope unit="pp">{$p}</biblScope>,
-                        for $vol in $rec?data?volume[. != '']
-                        return <biblScope unit="vol">{$vol}</biblScope>
+                        return <biblScope unit="pp">{$p}</biblScope>
                     }</monogr>
                      else ()
 (: I haven't found an example file with series information to find the JSON equivalence to the tei structure, so have to continue on that :)
