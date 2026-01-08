@@ -466,7 +466,8 @@ let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
     return 
     <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a-text-linked}</note>
 (: checks existing doc to compare editing history, etc. :)
-let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
+let $existing-doc-path := concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml')
+let $existing-doc := if(doc-available($existing-doc-path)) then doc($existing-doc-path) else ()
 let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
 (: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 (:let $getNotes := 
