@@ -469,7 +469,7 @@ let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
 let $existing-doc := doc(concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml'))
 let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
 (: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
-let $getNotes := 
+(:let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
                     let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
                     let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
@@ -483,7 +483,7 @@ let $getNotes :=
                                         else ()
                              else()
                 else ()
-                
+ :)               
 let $bibl := 
     let $html-citation := $rec?bib
     let $html-no-breaks := replace($html-citation,'\\n\s*','')
@@ -643,7 +643,7 @@ return
                   {$tei-series}
                   {$abstract}
                   {$citedRange}
-                  {$getNotes}
+                  {(: $getNotes :)}
                 </biblStruct>
                 {$bibl}
                 {$coins}
