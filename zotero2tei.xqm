@@ -150,11 +150,7 @@ return
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
-                    <availability>
-                        <licence target="https://creativecommons.org/licenses/by/4.0/">
-                            <p>Distributed under a Creative Commons Attribution 4.0 International License (CC BY 4.0).</p>
-                        </licence>
-                    </availability>
+                    {$zotero2tei:zotero-config//*:availability}
                     <date>{current-date()}</date>
                 </publicationStmt>
                 <sourceDesc>
