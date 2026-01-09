@@ -1,0 +1,36 @@
+<zotero-config>
+    <!-- Used by get-zotero-data.pp.xql-->
+    <groupid>4861694</groupid>
+    <last-modified-version>2635</last-modified-version>
+    <!-- format json or tei -->
+    <format>json</format>
+    <data-dir>/home/arren/Documents/GitHub/syriaca-data/data/bibl/tei/</data-dir>
+    <base-uri>http://syriaca.org/cbss/</base-uri>
+    <!-- Allowed values: auto-generated, zotero -->
+    <id-pattern>zotero</id-pattern>
+    <!-- Values used to build TEI records -->
+    <sponsor xmlns="http://www.tei-c.org/ns/1.0">Syriaca.org: The Syriac Reference Portal</sponsor>
+    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson"
+        >David A. Michelson</editor>
+    <availability xmlns="http://www.tei-c.org/ns/1.0">
+        <licence target="http://creativecommons.org/licenses/by/4.0/">
+            <p>Distributed under a Creative Commons Attribution 4.0 International License.</p>
+        </licence>
+    </availability>
+    <seriesStmt xmlns="http://www.tei-c.org/ns/1.0" collection="P4VVZ7P6">
+        <title level="s">The Comprehensive Bibliography on Syriac Studies</title>
+        <editor role="general" ref="http://syriaca.org/documentation/editors.xml#sminov">Sergey Minov</editor>
+        <editor role="technical" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
+        <editor role="technical" ref="http://syriaca.org/documentation/editors.xml#wpotter">William L. Potter</editor>
+        <editor role="technical" ref="http://syriaca.org/documentation/editors.xml#dmichelson">Jeanne-Nicole Mellon Saint-Laurent</editor>
+        <editor role="technical" ref="http://syriaca.org/documentation/editors.xml#dschwartz">Daniel L. Schwartz</editor>
+        <idno type="URI">http://syriaca.org/cbss</idno>
+    </seriesStmt>
+    <seriesStmt xmlns="http://www.tei-c.org/ns/1.0" collection="default">
+        <title level="s">Syriaca.org: Additional Works Cited</title>
+        <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
+        <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">Jeanne-Nicole Mellon Saint-Laurent</editor>
+        <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dschwartz">Daniel L. Schwartz</editor>
+        <idno type="URI">http://syriaca.org/bibl</idno>
+    </seriesStmt>
+</zotero-config>
