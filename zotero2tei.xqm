@@ -631,8 +631,9 @@ return
                    (: remove the collection attribute before returning :)
                   return if($seriesStmts) then
                     functx:remove-attributes($seriesStmts, "collection")
-                  else 
+                  else if($zotero2tei:zotero-config//*:seriesStmt[@collection = "default"]) then
                     functx:remove-attributes($zotero2tei:zotero-config//*:seriesStmt[@collection = "default"], "collection")
+                  else ()
                
                 }
                 <sourceDesc>
