@@ -10,8 +10,6 @@
     <id-pattern>zotero</id-pattern>
     <!-- Values used to build TEI records -->
     <sponsor xmlns="http://www.tei-c.org/ns/1.0">Syriaca.org: The Syriac Reference Portal</sponsor>
-    <editor xmlns="http://www.tei-c.org/ns/1.0" role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson"
-        >David A. Michelson</editor>
     <availability xmlns="http://www.tei-c.org/ns/1.0">
         <licence target="http://creativecommons.org/licenses/by/4.0/">
             <p>Distributed under a Creative Commons Attribution 4.0 International License.</p>
