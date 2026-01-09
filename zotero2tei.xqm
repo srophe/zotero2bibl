@@ -253,7 +253,7 @@ let $journal-titles :=  (for $journal in $rec?data?publicationTitle[. != '']
                                 element { xs:QName("title") } {
                                 attribute level { $level }, attribute xml:lang { "zh-Hant" },attribute type { "alt" }, $title}                                
                             else ()    )
-let $titles-all := ($analytic-title,$series-titles,$journal-titles)
+let $titles-all := ($analytic-title,$bookTitle,$journal-titles)
 (: Local ID and URI :)
 let $local-uri := <idno type="URI">{$local-id}</idno>   
 (:    Uses the Zotero ID (manually numbered tag) to add an idno with @type='zotero':)
