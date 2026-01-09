@@ -21,9 +21,9 @@ xquery version "3.1";
 :)
 module namespace zotero2tei="http://syriaca.org/zotero2tei";
 import module namespace http="http://expath.org/ns/http-client";
+import module namespace functx = "http://www.functx.com";
 declare default element namespace "http://www.tei-c.org/ns/1.0";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
-declare namespace functx = "http://www.functx.com";
 
 (: Access zotero-api configuration file :) 
 declare variable $zotero2tei:zotero-api := 'https://api.zotero.org';
@@ -621,6 +621,20 @@ return
                     {$zotero2tei:zotero-config//*:availability}
                     <date>{current-date()}</date>
                 </publicationStmt>
+                {
+                  (: Get the seriesStmts from the config file based on the Zotero collections to which the record belongs :)
+                  let $collections := $rec?data?collections?*
+                  let $seriesStmts := 
+                    for $c in $collections
+                    return $zotero2tei:zotero-config//*:seriesStmt[@collection = $c]
+                   (: return the list of series based on collections, or the default series if no matching collections :)
+                   (: remove the collection attribute before returning :)
+                  return if($seriesStmts) then
+                    functx:remove-attributes($seriesStmts, "collection")
+                  else 
+                    functx:remove-attributes($zotero2tei:zotero-config//*:seriesStmt[@collection = "default"], "collection")
+               
+                }
                 <sourceDesc>
                     <p>Born digital.</p>
                 </sourceDesc>
