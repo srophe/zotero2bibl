@@ -541,7 +541,7 @@ return
                     $zotero2tei:zotero-config//*:sponsor,
                     $zotero2tei:zotero-config//*:funder,
                     $zotero2tei:zotero-config//*:principal,
-                    $zotero2tei:zotero-config//*:editor,
+                    $zotero2tei:zotero-config/*:zotero-config/*:editor,
                     (: Editors :)
                     for $e in $rec?meta?createdByUser
                     let $uri := $e?links?*?href
