@@ -189,6 +189,15 @@ let $recordType :=
     if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
     else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
+
+(: Parse Extra field into a map of key:value pairs :)
+let $extra-pairs := $rec?data?extra => tokenize("\n")
+let $extra-map := map:merge(
+  for $pair in $extra-pairs
+  let $key-val := tokenize($pair, ": ")
+  return map:entry($key-val[1], $key-val[2]),
+  {"duplicates": "combine"} (: Duplicate keys, valid for Zotero extra, will result in a sequence of values mapped to the same key. :)
+)
 (: Main titles from zotero record:)
 let $analytic-title := (for $t in $rec?data?title
                        return 
