@@ -431,11 +431,11 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
                         if($lang) then ($lang) else (),
-                        for $vol in $rec?data?volume[. != '']
-                        return <biblScope unit="vol">{$vol}</biblScope>,
-                        if($rec?data?numberOfVolumes[. != '']) then <extent>{$rec?data?numberOfVolumes}</extent> else(),
                         if($rec?data?edition[. != '']) then <edition>{$rec?data?edition}</edition> else(),
                         if ($imprint) then ($imprint) else (),
+                        if($rec?data?numberOfVolumes[. != '']) then <extent>{$rec?data?numberOfVolumes}</extent> else(),
+                        for $vol in $rec?data?volume[. != '']
+                        return <biblScope unit="vol">{$vol}</biblScope>,
                         for $p in $rec?data?pages[. != '']
                         return <biblScope unit="pp">{$p}</biblScope>
                     }</monogr>
