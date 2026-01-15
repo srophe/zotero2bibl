@@ -20,14 +20,15 @@ xquery version "3.1";
      - Changes respStmts with resp='translator' to editor[@role='translator']
 :)
 module namespace zotero2tei="http://syriaca.org/zotero2tei";
-import module namespace http="http://expath.org/ns/http-client";
+(: import module namespace http="http://expath.org/ns/http-client"; :)
 import module namespace functx = "http://www.functx.com";
 declare default element namespace "http://www.tei-c.org/ns/1.0";
 declare namespace tei = "http://www.tei-c.org/ns/1.0";
 
 (: Access zotero-api configuration file :) 
 declare variable $zotero2tei:zotero-api := 'https://api.zotero.org';
-declare variable $zotero2tei:zotero-config := doc('zotero-config.xml');
+declare variable $zotero2tei:path-to-zotero-config external := "zotero-config.xml";
+declare variable $zotero2tei:zotero-config := doc($zotero2tei:path-to-zotero-config);
 declare variable $zotero2tei:base-uri := $zotero2tei:zotero-config//*:base-uri/text();
 declare variable $zotero2tei:groupid := $zotero2tei:zotero-config//*:groupid/text();
 (:~ 
@@ -274,27 +275,15 @@ let $zotero-idno := <idno type="URI">{$rec?links?alternate?href}</idno>
 let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zotero.org','www.zotero.org')}</idno>
 (:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
-(:  Not sure here if extra is always the worldcat-ID and if so, 
-if or how more than one ID are structured, however: converted to worldcat-URI :)
-let $extra := 
-                for $extra in tokenize($rec?data?extra,'\n')
-                return 
-                    if(matches($extra,'^OCLC:\s*')) then 
-                        <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($extra,'OCLC: ')))}</idno>
-                    else if(matches($extra,'^([\d]\s*)')) then 
-                        <idno type="URI">{"http://www.worldcat.org/oclc/" || $extra}</idno>
-                    else ()
-(:  @depreciated, use $extra to parse out all the key:value pairs in the extra field. Currently only processing the OCLC number                  
-let $worldcat-uri := 
-                    (
-                    for $oclc in $rec?data?extra[matches(.,'^OCLC:\s*')]
-                    return <idno type="URI">{concat("http://www.worldcat.org/oclc/",normalize-space(substring-after($oclc,'OCLC: ')))}</idno>,
-                    for $num in $rec?data?extra[matches(.,'^([\d]\s*)')]
-                    return <idno type="URI">{"http://www.worldcat.org/oclc/" || $num}</idno>)        
-:)                    
+
+(: Create the OCLC IDNOs from the extra field "OCLC" key :)
+let $oclc-idno :=
+    for $oclc in $extra-map?OCLC
+    return <idno type="URI">{"http://www.worldcat.org/oclc/"||normalize-space($oclc)}</idno>
+
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/>                
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$extra,$refs)
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$oclc-idno,$refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang := if($rec?data?language) then
                 element textLang { 
