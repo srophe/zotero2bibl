@@ -184,11 +184,6 @@ return
 declare function zotero2tei:build-new-record-json($rec as item()*, $local-id as xs:string) {
 let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]
 let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-uri/text(),$ids) else $local-id
-let $itemType := $rec?data?itemType
-let $recordType := 	
-    if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
-    else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
-    else 'monograph' 
 
 (: Parse Extra field into a map of key:value pairs :)
 let $extra-pairs := $rec?data?extra => tokenize("\n")
@@ -198,6 +193,14 @@ let $extra-map := map:merge(
   return map:entry($key-val[1], $key-val[2]),
   {"duplicates": "combine"} (: Duplicate keys, valid for Zotero extra, will result in a sequence of values mapped to the same key. :)
 )
+
+(: get the item type, overriding from extra (via the Type key) if needed, handling multiple Type values, which should be avoided but is possible :)
+let $itemType := if(map:contains($extra-map, "Type")) then $extra-map?Type => string-join(" ") else $rec?data?itemType
+let $recordType := 	
+    if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
+    else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
+    else 'monograph' 
+
 (: Main titles from zotero record:)
 let $analytic-title := (for $t in $rec?data?title
                        return 
