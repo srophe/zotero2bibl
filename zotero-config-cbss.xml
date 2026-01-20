@@ -29,6 +29,6 @@
         <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">David A. Michelson</editor>
         <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dmichelson">Jeanne-Nicole Mellon Saint-Laurent</editor>
         <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dschwartz">Daniel L. Schwartz</editor>
-        <idno type="URI">http://syriaca.org/bibl</idno>
+        <idno type="URI">http://syriaca.org/works-cited</idno>
     </seriesStmt>
 </zotero-config>
