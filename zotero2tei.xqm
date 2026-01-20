@@ -412,7 +412,7 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
                     if ($rec?data?publisher) then (<publisher>{$rec?data?publisher}</publisher>) else (),
                     if ($rec?data?date) then (<date>{$rec?data?date}</date>) else ()
                 }</imprint>)
-(: Transforming tags to relation... if no subject or ms s present, still shows <listRelations\>, I have to fix that :)
+
 let $list-relations := if(empty($rec?data?tags) or empty($rec?data?relations)) then () else (<listRelation>{(
                         for $tag in $rec?data?tags?*?tag
                         let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
@@ -708,7 +708,7 @@ return
                 {$bibl}
                 {$coins}
                 {$citation}
-                {$list-relations}
+                {if($list-relations/relation) then $list-relations else ()}
             </body>
         </text>
     </TEI>
