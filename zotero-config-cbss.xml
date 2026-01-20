@@ -8,6 +8,7 @@
     <base-uri>http://syriaca.org/cbss/</base-uri>
     <!-- Allowed values: auto-generated, zotero -->
     <id-pattern>zotero</id-pattern>
+    <pub-lang>extra</pub-lang>
     <!-- Values used to build TEI records -->
     <sponsor xmlns="http://www.tei-c.org/ns/1.0">Syriaca.org: The Syriac Reference Portal</sponsor>
     <availability xmlns="http://www.tei-c.org/ns/1.0">
