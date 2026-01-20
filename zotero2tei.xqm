@@ -279,11 +279,19 @@ let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 (: Create the OCLC IDNOs from the extra field "OCLC" key :)
 let $oclc-idno :=
     for $oclc in $extra-map?OCLC
-    return <idno type="URI">{"http://www.worldcat.org/oclc/"||normalize-space($oclc)}</idno>
+    return <idno type="OCLC">{normalize-space($oclc)}</idno>
+
+let $doi-idno := ()
 
 let $refs := for $ref in $rec?data?url[. != '']
-             return <ref target="{$ref}"/>                
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$oclc-idno,$refs)
+             return <ref target="{$ref}"/> 
+let $doi-refs := ()
+let $oclc-refs :=
+    for $oclc in $extra-map?OCLC
+    return <ref target="{"http://www.worldcat.org/oclc/"||$oclc}"/>
+
+let $all-refs := ($refs, $doi-refs, $oclc-refs)
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$doi-idno,$oclc-idno,$all-refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang := if($rec?data?language) then
                 element textLang { 
