@@ -322,7 +322,16 @@ let $lang := if($lang-sources) then
                             ))}
                     else ()
                 }  
-             else ()             
+             else ()    
+
+(: Gathering tei:note elements :)
+let $lang-note := if(map:contains($extra-map, "LangNote")) then (
+    for $note in $extra-map?LangNote
+    return <note type="lang-note">{$note}</note>
+) else ()
+
+(: Add more :)
+let $all-notes := ($lang-note)
 (: organizing creators by type and name :)
 let $creator := for $creators in $rec?data?creators?*
                 return 
@@ -459,6 +468,7 @@ let $tei-monogr := if($recordType = "analytic" or $recordType = "monograph") the
                         else ($series-titles,$journal-titles),
                         if ($tei-analytic) then () else ($all-idnos),
                         if($lang) then ($lang) else (),
+                        if($all-notes) then ($all-notes) else (),
                         if($rec?data?edition[. != '']) then <edition>{$rec?data?edition}</edition> else(),
                         if ($imprint) then ($imprint) else (),
                         if($rec?data?numberOfVolumes[. != '']) then <extent>{$rec?data?numberOfVolumes}</extent> else(),
