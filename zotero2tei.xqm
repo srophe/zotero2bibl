@@ -281,16 +281,34 @@ let $oclc-idno :=
     for $oclc in $extra-map?OCLC
     return <idno type="OCLC">{normalize-space($oclc)}</idno>
 
-let $doi-idno := ()
+(: Get DOI from the record's field, or the extra map key :)
+let $dois :=
+    for $doi in ($rec?data?DOI, $extra-map?DOI)
+    return 
+        (: Extract just the DOI portion, if it includes a URL, etc. :)
+        for $d in functx:get-matches($doi, "10\.\d+.+")
+        where $d != "" (: filter out empty matches... :)
+        return $d
+
+(: DOI idno just the identifier portion :)
+let $doi-idno :=
+    for $doi in $dois
+    return <idno type="DOI">{$doi}</idno>
 
 let $refs := for $ref in $rec?data?url[. != '']
              return <ref target="{$ref}"/> 
-let $doi-refs := ()
+
+(: Create a uniform DOI URL :)
+let $doi-refs := 
+    for $doi in $dois
+    return <ref type="DOI" target="{"https://doi.org/"||$doi}"/>
+
+(: Create a uniform link to WorldCat using the OCLC number :)
 let $oclc-refs :=
     for $oclc in $extra-map?OCLC
-    return <ref target="{"http://www.worldcat.org/oclc/"||$oclc}"/>
+    return <ref type="OCLC" target="{"http://www.worldcat.org/oclc/"||$oclc}"/>
 
-let $all-refs := ($refs, $doi-refs, $oclc-refs)
+let $all-refs := functx:distinct-deep(($refs, $doi-refs, $oclc-refs))
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$doi-idno,$oclc-idno,$all-refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang := if($rec?data?language) then
