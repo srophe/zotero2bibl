@@ -199,7 +199,7 @@ let $extra-map := map:merge(
 let $itemType := if(map:contains($extra-map, "Type")) then $extra-map?Type => string-join(" ") else $rec?data?itemType
 let $recordType := 	
     if($itemType = 'book' and $rec?data?series[. != '']) then 'monograph'
-    else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper') or $rec?data?series != '') then 'analytic' 
+    else if($itemType = ('dictionaryEntry','journalArticle','bookSection','magazineArticle','newspaperArticle','conferencePaper', 'review-book') or $rec?data?series != '') then 'analytic' 
     else 'monograph' 
 
 (: Main titles from zotero record:)
