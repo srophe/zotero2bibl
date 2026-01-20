@@ -276,6 +276,16 @@ let $zotero-idno-uri := <idno type="URI">{replace($rec?links?self?href,'api.zote
 (:  Grabs URI in tags prefixed by 'Subject: '. :)
 let $subject-uri := $rec?data?tags?*?tag[matches(.,'^\s*Subject:\s*')]
 
+(: Create deprecated idnos from the extra field "deprecated" key :)
+let $deprecated-uris := $extra-map?deprecated
+let $deprecated-pubstmt := 
+    for $uri in $deprecated-uris 
+    (: ignore the Zotero URIs:)
+    where not(starts-with($uri, "https://zotero.org"))
+    return <idno type="deprecated">{$uri||"/tei"}</idno>
+
+let $deprecated-idnos := for $uri in $deprecated-uris return <idno type="deprecated">{$uri}</idno>
+
 (: Create the OCLC IDNOs from the extra field "OCLC" key :)
 let $oclc-idno :=
     for $oclc in $extra-map?OCLC
@@ -309,7 +319,7 @@ let $oclc-refs :=
     return <ref type="OCLC" target="{"http://www.worldcat.org/oclc/"||$oclc}"/>
 
 let $all-refs := functx:distinct-deep(($refs, $doi-refs, $oclc-refs))
-let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$doi-idno,$oclc-idno,$all-refs)
+let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$deprecated-idnos,$doi-idno,$oclc-idno,$all-refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
 let $lang-sources := if($zotero2tei:zotero-config//*:pub-lang/text() = "extra") then string-join($extra-map?PubLang, ",") else $rec?data?language
 let $lang := if($lang-sources) then
@@ -656,6 +666,7 @@ return
                 <publicationStmt>
                     <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
+                    {$deprecated-pubstmt}
                     {$zotero2tei:zotero-config//*:availability}
                     <date>{current-date()}</date>
                 </publicationStmt>
