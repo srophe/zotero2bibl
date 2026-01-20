@@ -311,14 +311,15 @@ let $oclc-refs :=
 let $all-refs := functx:distinct-deep(($refs, $doi-refs, $oclc-refs))
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$doi-idno,$oclc-idno,$all-refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
-let $lang := if($rec?data?language) then
+let $lang-sources := if($zotero2tei:zotero-config//*:pub-lang/text() = "extra") then string-join($extra-map?PubLang, ",") else $rec?data?language
+let $lang := if($lang-sources) then
                 element textLang { 
-                    attribute mainLang {tokenize($rec?data?language,',')[1]},
-                    if(count(tokenize($rec?data?language,',')) gt 1) then
+                    attribute mainLang {tokenize($lang-sources,',')[1]},
+                    if(count(tokenize($lang-sources,',')) gt 1) then
                       attribute otherLangs {
                         normalize-space(string-join(
-                            tokenize($rec?data?language,',')[position() gt 1],' ' 
-                            ))}  
+                            tokenize($lang-sources,',')[position() gt 1],' ' 
+                            ))}
                     else ()
                 }  
              else ()             
