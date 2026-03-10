@@ -32,4 +32,23 @@
         <editor role="general" ref="http://syriaca.org/documentation/editors.xml#dschwartz">Daniel L. Schwartz</editor>
         <idno type="URI">http://syriaca.org/works-cited</idno>
     </seriesStmt>
+    <!-- Map Extra Field Keys to TEI relation elements -->
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="ReviewOf" type="see-also" ref="http://syriaca.org/taxonomy/review-of" active="" passive="">
+        <desc>Review of</desc>
+    </relation>
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="PartOf" type="see-also" ref="http://id.loc.gov/ontologies/bibframe/partOf" active="" passive="">
+        <desc>Part of</desc>
+    </relation>
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="CompanionWith" type="see-also" ref="http://id.loc.gov/ontologies/bibframe/accompaniedBy" mutual="">
+        <desc>Companion with</desc><!-- Use for relating CSCO texts and translations. -->
+    </relation>
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="PrecededBy" type="see-also" ref="http://id.loc.gov/ontologies/bibframe/precededBy" active="" passive="">
+        <desc>Preceded by</desc>
+    </relation>
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="PartOf" type="see-also" ref="http://id.loc.gov/ontologies/bibframe/succeededBy" active="" passive="">
+        <desc>Succeeded by</desc>
+    </relation>
+    <relation xmlns="http://www.tei-c.org/ns/1.0" extra="OtherEdition" type="see-also" ref="http://id.loc.gov/ontologies/bibframe/otherEdition" mutual="">
+        <desc>Other edition</desc>
+    </relation>
 </zotero-config>

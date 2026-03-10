@@ -423,6 +423,15 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
                     if ($rec?data?date) then (<date>{$rec?data?date}</date>) else ()
                 }</imprint>)
 
+(: Add the relations based on the extra field kyes declared in the config file :)
+let $extra-relations := 
+  for $rel in $zotero2tei:zotero-config/*:zotero-config/relation
+  let $extra-key := $rel/@extra/string()
+  return if(map:contains($extra-map, $extra-key)) then 
+    for $value in $extra-map?$extra-key
+    let $mutual := $local-id||" "||$value
+    return functx:update-attributes($rel, (QName("", "active"), QName("", "passive"), QName("", "mutual")), ($local-id, $value, $mutual)) (: using update-attributes to avoid adding mutual if active/passive and vice versa :)
+            => functx:remove-attributes("extra") (: remove the temporary attribute for config purposes :)
 let $list-relations := if(empty($rec?data?tags) or empty($rec?data?relations)) then () else (<listRelation>{(
                         for $tag in $rec?data?tags?*?tag
                         let $type := replace($tag,'^\s*(.+?):\s*.*','$1')
@@ -455,8 +464,10 @@ let $list-relations := if(empty($rec?data?tags) or empty($rec?data?relations)) t
                             element relation {
                                 attribute name {'dc:relation'},
                                 attribute mutual {$all}
-                            }
+                            },
+                            $extra-relations
                     )}</listRelation>)
+
 (: Not sure if that is sufficient for an analytic check? following the TEI-guideline and the other script @github... :)
 let $tei-analytic := if($recordType = "analytic" or $recordType = "bookSection" or $recordType = "chapter") then
                          <analytic>{
