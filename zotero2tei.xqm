@@ -182,9 +182,9 @@ return
  : NOTE needs to be completed. 
  : Sample JSON from Zotero at json-example.json
 :)
-declare function zotero2tei:build-new-record-json($rec as item()*, $local-id as xs:string) {
+declare function zotero2tei:build-new-record-json($rec as item()*, $local-id as xs:string, $config as node()) {
 let $ids :=  tokenize($rec?links?alternate?href,'/')[last()]
-let $local-id := if($ids != '') then concat($zotero2tei:zotero-config//*:base-uri/text(),$ids) else $local-id
+let $local-id := if($ids != '') then concat($config//*:base-uri/text(),$ids) else $local-id
 
 (: Parse Extra field into a map of key:value pairs :)
 let $extra-pairs := $rec?data?extra => tokenize("\n")
@@ -321,7 +321,7 @@ let $oclc-refs :=
 let $all-refs := functx:distinct-deep(($refs, $doi-refs, $oclc-refs))
 let $all-idnos := ($local-uri,$zotero-idno,$zotero-idno-uri,$deprecated-idnos,$doi-idno,$oclc-idno,$all-refs)
 (: Add language See: https://github.com/biblia-arabica/zotero2bibl/issues/16:)
-let $lang-sources := if($zotero2tei:zotero-config//*:pub-lang/text() = "extra") then string-join($extra-map?PubLang, ",") else $rec?data?language
+let $lang-sources := if($config//*:pub-lang/text() = "extra") then string-join($extra-map?PubLang, ",") else $rec?data?language
 let $lang := if($lang-sources) then
                 element textLang { 
                     attribute mainLang {tokenize($lang-sources,',')[1]},
@@ -425,7 +425,7 @@ let $imprint := if (empty($rec?data?place) and empty($rec?data?publisher) and em
 
 (: Add the relations based on the extra field kyes declared in the config file :)
 let $extra-relations := 
-  for $rel in $zotero2tei:zotero-config/*:zotero-config/relation
+  for $rel in $config/*:zotero-config/relation
   let $extra-key := $rel/@extra/string()
   return if(map:contains($extra-map, $extra-key)) then 
     for $value in $extra-map?$extra-key
@@ -456,9 +456,9 @@ let $list-relations := if(empty($rec?data?tags) or empty($rec?data?relations)) t
                                         ,
                         let $relations := $rec?data?relations
                         let $rec := $local-uri
-                        let $zotero-url := concat('http://zotero.org/groups/',$zotero2tei:groupid,'/items')
+                        let $zotero-url := concat('http://zotero.org/groups/',$config//*:groupid/text(),'/items')
                         let $related := string-join(data($relations?*),' ')
-                        let $all := normalize-space(concat($local-uri,' ', replace($related,$zotero-url,$zotero2tei:base-uri)))
+                        let $all := normalize-space(concat($local-uri,' ', replace($related,$zotero-url,$config//*:base-uri/text())))
                         where $related != '' and $related != ' '
                         return  
                             element relation {
@@ -511,8 +511,8 @@ let $citedRange := for $p in $rec?data?tags?*?tag[matches(.,'^\s*PP:\s*')]
                    return <citedRange unit="page" xmlns="http://www.tei-c.org/ns/1.0">{substring-after($p,'PP: ')}</citedRange>
 (:  Replaces links to Zotero items in abstract in format {https://www.zotero.org/groups/[...]} with URIs :)
 let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
-    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$zotero2tei:zotero-config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
-    let $a-link-replace := $zotero2tei:zotero-config//*:base-uri/text()
+    let $a-link-regex := concat('\{https://www.zotero.org/groups/',$config//*:groupid/text(),'.*?/itemKey/([0-9A-Za-z]+).*?\}')
+    let $a-link-replace := $config//*:base-uri/text()
     let $a-text-linked := 
         for $node in analyze-string($a,$a-link-regex)/*
         let $url := concat($a-link-replace,'/',$node/fn:group/text())
@@ -521,13 +521,13 @@ let $abstract :=   for $a in $rec?data?abstractNote[. != ""]
     return 
     <note type="abstract" xmlns="http://www.tei-c.org/ns/1.0">{$a-text-linked}</note>
 (: checks existing doc to compare editing history, etc. :)
-let $existing-doc-path := concat($zotero2tei:zotero-config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml')
+let $existing-doc-path := concat($config//*:data-dir/text(),'/',tokenize($local-id,'/')[last()],'.xml')
 let $existing-doc := if(doc-available($existing-doc-path)) then doc($existing-doc-path) else ()
 let $existing-zotero-editors := $existing-doc/TEI/teiHeader/fileDesc/titleStmt/respStmt[resp = 'Record edited in Zotero by']
 (: Need to include here Vol. URLs contained in notes (see above) as well as DOIs contained in notes :)
 (:let $getNotes := 
                 if($rec?meta?numChildren[. gt 0]) then
-                    let $url := concat($zotero2tei:zotero-api,'/groups/',$zotero2tei:zotero-config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
+                    let $url := concat($zotero2tei:zotero-api,'/groups/',$config//*:groupid/text(),'/items/',tokenize($local-id,'/')[last()],'/children') 
                     let $children := http:send-request(<http:request http-version="1.1" href="{xs:anyURI($url)}" method="get"/>)
                     return 
                         if($children[1]/@status = '200') then 
@@ -597,38 +597,38 @@ return
             <fileDesc>
                 <titleStmt>{(
                     $titles-all,
-                    $zotero2tei:zotero-config//*:sponsor,
-                    $zotero2tei:zotero-config//*:funder,
-                    $zotero2tei:zotero-config//*:principal,
-                    $zotero2tei:zotero-config/*:zotero-config/*:editor,
+                    $config//*:sponsor,
+                    $config//*:funder,
+                    $config//*:principal,
+                    $config/*:zotero-config/*:editor,
                     (: Editors :)
                     for $e in $rec?meta?createdByUser
                     let $uri := $e?links?*?href
                     let $name := if($e?name[. != '']) then $e?name else $e?username
-                    let $sropheNameID := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
-                                            $zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:sropheId/text()
+                    let $sropheNameID := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
+                                            $config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:sropheId/text()
                                         else $name
-                    let $editorsURI := replace($zotero2tei:base-uri,'/bibl','/documentation/editors.xml#')
-                    let $ref := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
+                    let $editorsURI := replace($config//*:base-uri/text(),'/bibl','/documentation/editors.xml#')
+                    let $ref := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
                                     concat($editorsURI,$sropheNameID)
                                 else $uri
-                    let $nameString := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then
-                                         $zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:nameString/text()
+                    let $nameString := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then
+                                         $config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:nameString/text()
                                        else $name
                     return
                         <editor role="creator" ref="{$ref}">{$nameString}</editor>,
                     for $e in $rec?meta?lastModifiedByUser
                     let $uri := $e?links?*?href
                     let $name := if($e?name[. != '']) then $e?name else $e?username
-                    let $sropheNameID := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
-                                            $zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:sropheId/text()
+                    let $sropheNameID := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
+                                            $config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:sropheId/text()
                                         else $name
-                    let $editorsURI := replace($zotero2tei:base-uri,'/bibl','/documentation/editors.xml#')
-                    let $ref := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
+                    let $editorsURI := replace($config//*:base-uri/text(),'/bibl','/documentation/editors.xml#')
+                    let $ref := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then 
                                     concat($editorsURI,$sropheNameID)
                                 else $uri
-                    let $nameString := if($zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then
-                                         $zotero2tei:zotero-config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:nameString/text()
+                    let $nameString := if($config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]) then
+                                         $config//*:editorsIdLookupTable/*:person[*:zoteroId = $name]/*:nameString/text()
                                        else $name
                     return
                         <editor role="creator" ref="{$ref}">{$nameString}</editor>,
@@ -675,10 +675,10 @@ return
                         <respStmt><resp>Primary editing by</resp><name>{$edited}</name></respStmt>
                     )}</titleStmt>
                 <publicationStmt>
-                    <authority>{$zotero2tei:zotero-config//*:sponsor/text()}</authority>
+                    <authority>{$config//*:sponsor/text()}</authority>
                     <idno type="URI">{$local-id}/tei</idno>
                     {$deprecated-pubstmt}
-                    {$zotero2tei:zotero-config//*:availability}
+                    {$config//*:availability}
                     <date>{current-date()}</date>
                 </publicationStmt>
                 {
@@ -686,13 +686,13 @@ return
                   let $collections := $rec?data?collections?*
                   let $seriesStmts := 
                     for $c in $collections
-                    return $zotero2tei:zotero-config//*:seriesStmt[@collection = $c]
+                    return $config//*:seriesStmt[@collection = $c]
                    (: return the list of series based on collections, or the default series if no matching collections :)
                    (: remove the collection attribute before returning :)
                   return if($seriesStmts) then
                     functx:remove-attributes($seriesStmts, "collection")
-                  else if($zotero2tei:zotero-config//*:seriesStmt[@collection = "default"]) then
-                    functx:remove-attributes($zotero2tei:zotero-config//*:seriesStmt[@collection = "default"], "collection")
+                  else if($config//*:seriesStmt[@collection = "default"]) then
+                    functx:remove-attributes($config//*:seriesStmt[@collection = "default"], "collection")
                   else ()
                
                 }
@@ -736,8 +736,8 @@ return
     </TEI>
 };
 
-declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:string?, $format as xs:string?){
+declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:string?, $format as xs:string?, $config as node() := $zotero2tei:zotero-config){
     if($format = 'json') then
-        zotero2tei:build-new-record-json($rec, $local-id)
+        zotero2tei:build-new-record-json($rec, $local-id, $config)
     else zotero2tei:build-new-record($rec, $local-id)
 };
