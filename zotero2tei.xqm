@@ -737,7 +737,29 @@ return
 };
 
 declare function zotero2tei:build-new-record($rec as item()*, $local-id as xs:string?, $format as xs:string?, $config as node() := $zotero2tei:zotero-config){
-    if($format = 'json') then
-        zotero2tei:build-new-record-json($rec, $local-id, $config)
-    else zotero2tei:build-new-record($rec, $local-id)
+    let $record := 
+        if($format = 'json') then
+            zotero2tei:build-new-record-json($rec, $local-id, $config)
+        else zotero2tei:build-new-record($rec, $local-id)
+    return zotero2tei:add-schema-declaration($record, $config)
+};
+
+(:~
+ : Precedes the record with an xml-model processing instruction pointing to the RELAX NG schema
+ : given in the config's <schema href="..."/>, so editors and validators check it automatically.
+ : Without a schema in the config the record is returned unchanged.
+ : @param $record TEI record
+ : @param $config zotero-config.xml
+:)
+declare function zotero2tei:add-schema-declaration($record as node()?, $config as node()) as node()? {
+    let $href := string(($config//*:schema/@href)[1])
+    return
+        if($record and $href != '') then
+            document {
+                processing-instruction xml-model {
+                    concat('href="', $href, '" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"')
+                },
+                $record
+            }
+        else $record
 };

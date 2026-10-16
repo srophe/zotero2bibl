@@ -8,6 +8,8 @@
     <base-uri>https://architecturasinica.org/bibl</base-uri>
     <!-- Allowed values: auto-generated, zotero -->
     <id-pattern>zotero</id-pattern>
+    <!-- Optional: RELAX NG schema declared in each record with <?xml-model?> -->
+    <!-- <schema href="https://example.org/schema.rng"/> -->
     <!-- Values used to build TEI records -->
     <principal xmlns="http://www.tei-c.org/ns/1.0">Tracy Miller</principal>
     <editor xmlns="http://www.tei-c.org/ns/1.0" role="general">Tracy Miller</editor>

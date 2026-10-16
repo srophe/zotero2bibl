@@ -20,4 +20,6 @@ To change the TEI output edit zotero2tei.xqm.
     
     e. Change TEI header information to be specific to your repository. 
 
+    f. Optionally, add `<schema href="..."/>` with the URL of a RELAX NG schema; each record then declares it with `<?xml-model?>`, so editors and validators check it automatically.
+
 3. Load the library into eXistdb, access the application (ex: http://localhost:8080/exist/apps/zotero2bibl/index.html) and run either "intiate" (to load a new library) or "update" to check for updates in your Zotero library. 
